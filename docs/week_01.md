@@ -19,3 +19,19 @@
 - `ToolCall` 记录 Agent 想调用什么工具和传入哪些参数。
 - `ToolResult` 统一记录工具成功或失败的结果。
 - 工具失败时应返回 `success=False`、`result=None` 和清楚的 `error` 信息。
+
+## Day 3：实现第一个工具
+
+- 新建 `src/causalens/tools/calculator.py`
+- 实现 `calculator(expression)`，用于计算基础数学表达式
+- 新建 `src/causalens/tools/data_profile.py`
+- 实现 `profile_dataset(dataset_path)`，用于读取 CSV 并生成数据集概况
+- 新建 `scripts/tool_demo.py`，集中演示两个工具的成功与失败情况
+
+### 今日理解
+
+- Agent 的工具本质上是可以被程序或模型调用的 Python 函数。
+- 工具应接收清楚的输入，并统一返回 `ToolResult`。
+- `calculator` 先检查表达式是否只包含允许字符，再尝试计算。
+- `profile_dataset` 使用 pandas 读取 CSV，并返回行数、列数、字段名、数据类型、缺失值和数值统计。
+- 工具不应该因为一个错误输入让整个程序崩掉；失败时返回 `success=False` 和可读的 `error` 信息。
