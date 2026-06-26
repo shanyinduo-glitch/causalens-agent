@@ -35,3 +35,22 @@
 - `calculator` 先检查表达式是否只包含允许字符，再尝试计算。
 - `profile_dataset` 使用 pandas 读取 CSV，并返回行数、列数、字段名、数据类型、缺失值和数值统计。
 - 工具不应该因为一个错误输入让整个程序崩掉；失败时返回 `success=False` 和可读的 `error` 信息。
+
+## Day 4：将 Python 工具包装为千问 Function Tool
+
+* 新建 `src/causalens/agent/tool_registry.py`
+* 建立 `TOOL_REGISTRY`，将工具名称 `profile_dataset` 映射到真实 Python 函数
+* 编写 `TOOLS`，向千问说明工具名称、用途和参数格式
+* 新建 `src/causalens/agent/qwen_client.py`，统一封装千问 OpenAI 兼容接口调用
+* 新建 `scripts/function_call_demo.py`，验证千问是否能选择正确工具并生成正确参数
+
+### 今日理解
+
+* `TOOL_REGISTRY` 是工具名称和真实 Python 函数之间的映射表。
+* `TOOLS` 是给大模型看的工具说明书，包含工具名称、用途、参数类型和必填参数。
+* 模型返回的 `tool_calls` 表示“请求调用工具”，并不代表工具已经被执行。
+* 模型返回的工具参数通常是 JSON 字符串，需要用 `json.loads()` 转换成 Python 字典。
+* Function Calling 的第一步是：模型负责选择工具和填写参数；程序负责真正执行工具。
+
+```
+```
