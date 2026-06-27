@@ -73,3 +73,48 @@
 * 第一轮模型负责选择工具和参数，第二轮模型负责阅读工具结果并回答用户。
 * `tool_choice="none"` 可以让第二轮模型停止继续调用工具，专注生成最终答案。
 * Agent 的可靠性来自“模型负责决策，工具负责真实计算和数据读取”。
+
+## Day 6：CLI、错误处理与自动化测试
+
+* 新建 `src/causalens/cli.py`
+
+* 使用 Typer 实现命令行入口：
+
+  ```powershell
+  python -m causalens.cli ask `
+    --dataset-path data/sample.csv `
+    --question "这个数据集有多少行？"
+  ```
+
+* CLI 会在调用模型前检查数据文件是否存在、路径是否为文件。
+
+* `profile_dataset()` 增加了更友好的错误处理：
+
+  * 文件不存在
+  * 路径不是文件
+  * CSV 文件为空
+  * CSV 只有表头、没有数据行
+  * CSV 编码或格式无法解析
+  * CSV 没有数值列
+
+* `tool_loop.py` 能处理：
+
+  * 模型没有调用工具
+  * 模型请求未知工具
+  * 工具参数不是合法 JSON
+  * 工具执行失败
+
+* 新增自动化测试：
+
+  * `tests/test_data_profile.py`
+  * `tests/test_tool_registry.py`
+  * `tests/test_tool_loop.py`
+  * `tests/test_cli.py`
+
+### 今日理解
+
+* CLI 是项目给用户使用的命令行入口。
+* 能在调用模型前发现的问题，应尽早检查，避免无意义的模型调用。
+* 工具失败时应返回清楚的 `ToolResult`，而不是让整个程序崩溃。
+* 自动化测试可以在修改代码后快速确认旧功能没有被改坏。
+* 测试 Agent 循环时，应使用模拟模型响应，而不是调用真实 API，这样测试不消耗 Token，也不会依赖网络。
