@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from openai import OpenAI
 
@@ -17,7 +18,7 @@ def get_qwen_client() -> OpenAI:
 
     if not api_key:
         raise RuntimeError(
-            "未找到 DASHSCOPE_API_KEY 环境变量，请先检查系统环境变量配置。"
+            "未找到 DASHSCOPE_API_KEY 环境变量，请检查系统环境变量配置。"
         )
 
     return OpenAI(
@@ -26,11 +27,38 @@ def get_qwen_client() -> OpenAI:
     )
 
 
-def request_tool_call(user_question: str):
-    """向千问发送用户问题和工具说明，返回模型的第一轮响应。"""
+def get_model_name() -> str:
+    """读取当前要使用的模型名称。"""
+
+    return os.getenv("MODEL_NAME", DEFAULT_MODEL_NAME)
+
+
+def create_chat_completion(
+    messages: list[dict[str, Any]],
+    *,
+    tools: list[dict[str, Any]] | None = None,
+    tool_choice: str | None = None,
+):
+    """向千问发送一次对话请求。"""
+
+    request_kwargs: dict[str, Any] = {
+        "model": get_model_name(),
+        "messages": messages,
+    }
+
+    if tools is not None:
+        request_kwargs["tools"] = tools
+
+    if tool_choice is not None:
+        request_kwargs["tool_choice"] = tool_choice
 
     client = get_qwen_client()
-    model_name = os.getenv("MODEL_NAME", DEFAULT_MODEL_NAME)
+
+    return client.chat.completions.create(**request_kwargs)
+
+
+def request_tool_call(user_question: str):
+    """保留 Day 4 的演示函数：请求模型选择工具。"""
 
     messages = [
         {
@@ -47,11 +75,8 @@ def request_tool_call(user_question: str):
         },
     ]
 
-    completion = client.chat.completions.create(
-        model=model_name,
+    return create_chat_completion(
         messages=messages,
         tools=TOOLS,
         tool_choice="auto",
     )
-
-    return completion

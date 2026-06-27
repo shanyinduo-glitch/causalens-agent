@@ -54,3 +54,22 @@
 
 ```
 ```
+
+## Day 5：实现模型 → 工具 → 模型循环
+
+* 新建 `src/causalens/agent/tool_loop.py`
+* 实现 `run_tool_agent(question, dataset_path)`，完成两轮模型调用
+* 第一轮由千问根据用户问题选择工具并生成参数
+* 程序通过 `TOOL_REGISTRY` 找到对应 Python 函数并执行
+* 将 `ToolResult` 以 `role="tool"` 消息加入对话历史
+* 第二轮由千问根据真实工具结果生成最终中文回答
+* 新建 `scripts/tool_loop_demo.py`，验证多个数据问题
+
+### 今日理解
+
+* Function Calling 不是模型自己执行 Python，而是模型提出工具调用请求。
+* `TOOL_REGISTRY` 根据工具名称找到真正的 Python 函数。
+* 工具执行后必须把结果通过 `role="tool"` 发回模型。
+* 第一轮模型负责选择工具和参数，第二轮模型负责阅读工具结果并回答用户。
+* `tool_choice="none"` 可以让第二轮模型停止继续调用工具，专注生成最终答案。
+* Agent 的可靠性来自“模型负责决策，工具负责真实计算和数据读取”。
