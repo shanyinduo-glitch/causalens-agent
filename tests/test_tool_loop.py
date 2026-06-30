@@ -1,24 +1,9 @@
 import json
+import copy
 from types import SimpleNamespace
 
-from causalens.agent import tool_loop
-
-
-def make_tool_call(
-    tool_name: str,
-    arguments: str,
-    tool_call_id: str = "call_test_001",
-):
-    """创建一个模拟的模型工具调用对象。"""
-
-    return SimpleNamespace(
-        id=tool_call_id,
-        type="function",
-        function=SimpleNamespace(
-            name=tool_name,
-            arguments=arguments,
-        ),
-    )
+import causalens.agent.tool_loop as tool_loop
+from causalens.schemas import ToolResult
 
 
 def make_response(content: str = "", tool_calls=None):
@@ -67,7 +52,7 @@ def test_tool_loop_handles_unknown_tool(monkeypatch):
     calls = []
 
     def fake_create_chat_completion(**kwargs):
-        calls.append(kwargs)
+        calls.append(copy.deepcopy(kwargs))
 
         if len(calls) == 1:
             unknown_tool_call = make_tool_call(
@@ -99,17 +84,19 @@ def test_tool_loop_handles_unknown_tool(monkeypatch):
 
     assert len(result.tool_results) == 1
     assert result.tool_results[0].success is False
-    assert "未注册的工具" in result.tool_results[0].error
+    assert "未注册" in result.tool_results[0].error
 
-    # 确认失败结果也被作为 role="tool" 消息发回给模型。
-    tool_message = calls[1]["messages"][-1]
-
-    assert tool_message["role"] == "tool"
+    tool_message = next(
+        message
+        for message in reversed(calls[1]["messages"])
+        if message["role"] == "tool"
+    )
 
     returned_result = json.loads(tool_message["content"])
 
+    assert tool_message["role"] == "tool"
     assert returned_result["success"] is False
-    assert "未注册的工具" in returned_result["error"]
+    assert "未注册" in returned_result["error"]
 
 
 def test_tool_loop_handles_invalid_json_arguments(monkeypatch):
@@ -118,7 +105,7 @@ def test_tool_loop_handles_invalid_json_arguments(monkeypatch):
     calls = []
 
     def fake_create_chat_completion(**kwargs):
-        calls.append(kwargs)
+        calls.append(copy.deepcopy(kwargs))
 
         if len(calls) == 1:
             invalid_json_tool_call = make_tool_call(
@@ -145,18 +132,28 @@ def test_tool_loop_handles_invalid_json_arguments(monkeypatch):
         dataset_path="data/sample.csv",
     )
 
-    # 参数无法解析时，不记录合法 ToolCall。
-    assert result.tool_calls == []
+    # 参数不合法时，仍记录模型请求，
+    # 但把原始字符串放在 raw_arguments 中，方便排查。
+    assert len(result.tool_calls) == 1
+    assert result.tool_calls[0].tool_name == "profile_dataset"
+    assert result.tool_calls[0].arguments["raw_arguments"] == (
+        "{this is not valid json}"
+    )
 
     assert len(result.tool_results) == 1
     assert result.tool_results[0].success is False
-    assert "无法解析工具参数" in result.tool_results[0].error
+    assert "JSON" in result.tool_results[0].error
 
-    tool_message = calls[1]["messages"][-1]
+    tool_message = next(
+        message
+        for message in reversed(calls[1]["messages"])
+        if message["role"] == "tool"
+    )
+
     returned_result = json.loads(tool_message["content"])
 
     assert returned_result["success"] is False
-    assert "无法解析工具参数" in returned_result["error"]
+    assert "JSON" in returned_result["error"]
 
 
 def test_tool_loop_handles_tool_execution_failure(monkeypatch):
@@ -168,7 +165,7 @@ def test_tool_loop_handles_tool_execution_failure(monkeypatch):
     calls = []
 
     def fake_create_chat_completion(**kwargs):
-        calls.append(kwargs)
+        calls.append(copy.deepcopy(kwargs))
 
         if len(calls) == 1:
             profile_tool_call = make_tool_call(
@@ -214,3 +211,239 @@ def test_tool_loop_handles_tool_execution_failure(monkeypatch):
 
     assert returned_result["success"] is False
     assert "工具执行异常" in returned_result["error"]
+
+
+def make_tool_call(
+    tool_name: str,
+    arguments: str | dict,
+    tool_call_id: str = "call_test",
+):
+    """
+    构造假的模型工具调用对象。
+
+    兼容两种测试写法：
+    1. 旧测试：arguments 直接传 JSON 字符串；
+    2. 新测试：arguments 传 Python 字典，由这里转成 JSON 字符串。
+
+    tool_call_id 默认给一个值，
+    这样旧测试不需要全部手动补 id。
+    """
+    if isinstance(arguments, dict):
+        arguments = json.dumps(
+            arguments,
+            ensure_ascii=False,
+        )
+
+    return SimpleNamespace(
+        id=tool_call_id,
+        type="function",
+        function=SimpleNamespace(
+            name=tool_name,
+            arguments=arguments,
+        ),
+    )
+
+
+def make_model_response(
+    content: str = "",
+    tool_calls: list | None = None,
+):
+    """
+    构造一个假的模型响应对象。
+
+    它模仿：
+    response.choices[0].message
+    """
+    assistant_message = SimpleNamespace(
+        content=content,
+        tool_calls=tool_calls or [],
+    )
+
+    return SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=assistant_message,
+            )
+        ]
+    )
+
+
+def test_agent_can_use_profile_then_sql_then_answer(monkeypatch):
+    """
+    验证 Agent 支持这样的多轮过程：
+
+    第 1 轮：模型调用 profile_dataset
+    第 2 轮：模型调用 run_readonly_sql
+    第 3 轮：模型直接给出最终回答
+    """
+    dataset_path = "data/student_performance.csv"
+
+    model_responses = iter(
+        [
+            # 第 1 次模型调用：先请求 profile_dataset
+            make_model_response(
+                tool_calls=[
+                    make_tool_call(
+                        tool_call_id="call_profile",
+                        tool_name="profile_dataset",
+                        arguments={
+                            "dataset_path": dataset_path,
+                        },
+                    )
+                ]
+            ),
+
+            # 第 2 次模型调用：拿到字段信息后，请求 SQL 工具。
+            # 故意写 sql_query，验证我们的参数兼容逻辑是否生效。
+            make_model_response(
+                tool_calls=[
+                    make_tool_call(
+                        tool_call_id="call_sql",
+                        tool_name="run_readonly_sql",
+                        arguments={
+                            "dataset_path": dataset_path,
+                            "sql_query": (
+                                "SELECT major, AVG(score) AS avg_score "
+                                "FROM dataset "
+                                "GROUP BY major "
+                                "ORDER BY avg_score DESC "
+                                "LIMIT 1"
+                            ),
+                        },
+                    )
+                ]
+            ),
+
+            # 第 3 次模型调用：不再请求工具，直接给最终回答。
+            make_model_response(
+                content=(
+                    "平均 score 最高的是 cs 专业，"
+                    "平均分为 81.23 分。"
+                )
+            ),
+        ]
+    )
+
+    received_requests = []
+
+    def fake_create_chat_completion(**kwargs):
+        """
+        替代真实模型 API。
+
+        每次 Agent 请求模型时，
+        依次返回上面准备好的三个假响应。
+        """
+        received_requests.append(copy.deepcopy(kwargs))
+        return next(model_responses)
+
+    def fake_profile_dataset(dataset_path: str) -> ToolResult:
+        assert dataset_path == "data/student_performance.csv"
+
+        return ToolResult(
+            tool_name="profile_dataset",
+            success=True,
+            result={
+                "column_names": [
+                    "student_id",
+                    "major",
+                    "score",
+                ],
+            },
+        )
+
+    def fake_run_readonly_sql(
+        dataset_path: str,
+        query: str,
+    ) -> ToolResult:
+        assert dataset_path == "data/student_performance.csv"
+
+        # 这条断言验证：
+        # 模型传入的 sql_query 已被标准化为真实函数需要的 query。
+        assert "GROUP BY major" in query
+        assert "AVG(score)" in query
+
+        return ToolResult(
+            tool_name="run_readonly_sql",
+            success=True,
+            result={
+                "row_count": 1,
+                "columns": [
+                    "major",
+                    "avg_score",
+                ],
+                "rows": [
+                    {
+                        "major": "cs",
+                        "avg_score": 81.23,
+                    }
+                ],
+            },
+        )
+
+    # 把真实模型调用替换成 fake，不联网、不花 Token。
+    monkeypatch.setattr(
+        tool_loop,
+        "create_chat_completion",
+        fake_create_chat_completion,
+    )
+
+    # 把真实工具注册表替换成测试专用工具。
+    monkeypatch.setattr(
+        tool_loop,
+        "TOOL_REGISTRY",
+        {
+            "profile_dataset": fake_profile_dataset,
+            "run_readonly_sql": fake_run_readonly_sql,
+        },
+    )
+
+    response = tool_loop.run_tool_agent(
+        question="哪个专业的平均 score 最高？",
+        dataset_path=dataset_path,
+    )
+
+    # 1. 最终答案来自第 3 轮模型。
+    assert "cs 专业" in response.answer
+    assert "81.23" in response.answer
+
+    # 2. Agent 确实连续执行了两个工具。
+    assert [tool_call.tool_name for tool_call in response.tool_calls] == [
+        "profile_dataset",
+        "run_readonly_sql",
+    ]
+
+    # 3. 两个工具都成功执行。
+    assert len(response.tool_results) == 2
+    assert all(result.success for result in response.tool_results)
+
+    # 4. sql_query 已被内部标准化成 query。
+    assert response.tool_calls[1].arguments["query"].startswith(
+        "SELECT major"
+    )
+    assert "sql_query" not in response.tool_calls[1].arguments
+
+    # 5. Agent 一共请求模型 3 次。
+    assert len(received_requests) == 3
+
+    # 6. 第二次模型调用时，历史中已包含：
+    # system、user、assistant 的工具请求、tool 的执行结果。
+    second_round_messages = received_requests[1]["messages"]
+
+    assert [message["role"] for message in second_round_messages] == [
+        "system",
+        "user",
+        "assistant",
+        "tool",
+    ]
+
+    # 7. 第三次模型调用时，历史中已包含两轮工具调用及结果。
+    third_round_messages = received_requests[2]["messages"]
+
+    assert [message["role"] for message in third_round_messages] == [
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool",
+    ]

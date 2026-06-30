@@ -38,3 +38,24 @@ def test_profile_dataset_requires_dataset_path():
     assert parameters["type"] == "object"
     assert parameters["required"] == ["dataset_path"]
     assert parameters["properties"]["dataset_path"]["type"] == "string"
+
+
+def test_run_readonly_sql_is_registered():
+    assert "run_readonly_sql" in TOOL_REGISTRY
+    assert callable(TOOL_REGISTRY["run_readonly_sql"])
+
+
+def test_run_readonly_sql_tool_definition():
+    sql_tool_definition = next(
+        tool
+        for tool in TOOLS
+        if tool["function"]["name"] == "run_readonly_sql"
+    )
+
+    parameters = sql_tool_definition["function"]["parameters"]
+
+    assert parameters["properties"]["dataset_path"]["type"] == "string"
+    assert parameters["properties"]["query"]["type"] == "string"
+
+    assert "dataset_path" in parameters["required"]
+    assert "query" in parameters["required"]
