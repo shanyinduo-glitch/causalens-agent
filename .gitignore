@@ -6,3 +6,5 @@ __pycache__/
 data/private/
 .idea/
 .pytest_cache/
+# Generated chart images
+outputs/charts/*.png

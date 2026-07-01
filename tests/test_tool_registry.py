@@ -59,3 +59,44 @@ def test_run_readonly_sql_tool_definition():
 
     assert "dataset_path" in parameters["required"]
     assert "query" in parameters["required"]
+
+
+def test_create_chart_is_registered():
+    assert "create_chart" in TOOL_REGISTRY
+    assert callable(TOOL_REGISTRY["create_chart"])
+
+
+def test_create_chart_tool_definition():
+    chart_tool_definition = next(
+        tool
+        for tool in TOOLS
+        if tool["function"]["name"] == "create_chart"
+    )
+
+    parameters = chart_tool_definition["function"]["parameters"]
+
+    assert parameters["properties"]["dataset_path"]["type"] == "string"
+
+    assert parameters["properties"]["chart_type"]["enum"] == [
+        "bar",
+        "scatter",
+        "histogram",
+        "line",
+    ]
+
+    assert parameters["properties"]["x_column"]["type"] == "string"
+    assert parameters["properties"]["y_column"]["type"] == "string"
+
+    assert parameters["properties"]["aggregation"]["enum"] == [
+        "mean",
+        "sum",
+        "count",
+    ]
+
+    assert parameters["properties"]["title"]["type"] == "string"
+
+    assert parameters["required"] == [
+        "dataset_path",
+        "chart_type",
+        "x_column",
+    ]

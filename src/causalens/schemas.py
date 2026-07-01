@@ -37,6 +37,38 @@ class DatasetProfile(BaseModel):
     numeric_summary: dict[str, dict[str, float]]
 
 
+class ChartRequest(BaseModel):
+    """
+    图表工具的标准输入结构。
+
+    这个模型的职责不是画图，
+    而是先检查模型传来的图表参数是否符合项目规则。
+    """
+
+    dataset_path: str
+
+    chart_type: Literal[
+        "bar",
+        "line",
+        "scatter",
+        "histogram",
+    ]
+
+    x_column: str
+    y_column: str | None = None
+
+    # 第一版先保留这个字段。
+    # 后续更复杂的分组图、分面图可以使用它。
+    group_by: str | None = None
+
+    aggregation: Literal[
+        "mean",
+        "sum",
+        "count",
+    ] | None = None
+
+    title: str | None = None
+
 class AgentResponse(BaseModel):
     """Agent 最终交给用户的结果。"""
 
