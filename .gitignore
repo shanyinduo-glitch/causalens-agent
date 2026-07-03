@@ -8,3 +8,7 @@ data/private/
 .pytest_cache/
 # Generated chart images
 outputs/charts/*.png
+# Runtime tool-call logs
+logs/*.jsonl
+# Generated evaluation results
+outputs/evals/*.jsonl

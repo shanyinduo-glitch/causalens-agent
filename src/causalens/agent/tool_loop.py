@@ -1,6 +1,8 @@
 import json
 from typing import Any
+from time import perf_counter
 
+from causalens.observability import append_tool_call_log
 from causalens.agent.qwen_client import create_chat_completion
 from causalens.agent.tool_registry import TOOL_REGISTRY, TOOLS
 from causalens.schemas import AgentResponse, ToolCall, ToolResult
@@ -112,6 +114,28 @@ SYSTEM_PROMPT = """
 - Pearson 相关系数只能描述线性相关关系，不能证明因果关系；
 - 不要把 PNG 图片路径当作已经完成视觉识别的证据。
 
+图表解释的通用证据边界：
+- data_preview 只是一部分数据预览，不代表完整数据集；
+  除非工具明确返回了完整汇总数据，否则不要根据 data_preview
+  推断整个数据集的分段范围、比例、集中区间或异常点；
+- numeric_summary 只支持描述其中实际返回的统计指标，
+  例如 count、mean、median、min、max；
+  不要仅根据这些指标判断分布是否对称、是否偏态、是否正态、
+  是否双峰、是否集中在某个区间，或存在多少异常值；
+- relationship_summary 只支持描述其中实际返回的点数、范围和
+  Pearson 相关系数；
+  不要据此编造分段统计、聚类、异常点检测、回归拟合优度、
+  残差分析或视觉形状结论；
+- 对 line 图，只有当 data_preview 包含全部按日期汇总后的点时，
+  才可以据此比较不同日期的数值、计算变化量、描述先升后降等
+  明确的数值变化；
+- 可以基于工具完整返回的数值做直接比较或四则运算，
+  例如最大值减最小值、两个日期之间的差值；
+  但必须让结论可以追溯到已返回的具体数值；
+- chart_path 只表示 PNG 已生成，不代表模型已经读取或理解了图片内容；
+- 对工具未返回的统计量、分布特征或图像视觉结论，
+  应明确说明当前工具结果不足以支持该判断，而不是猜测。
+  
 使用 run_readonly_sql 时，必须遵守以下规则：
 1. CSV 在 SQL 中永远叫做 dataset；
 2. 只写一条只读 SQL；
@@ -123,6 +147,12 @@ SYSTEM_PROMPT = """
 8. 对平均值、总数、最大值、最小值等统计问题，使用 AVG、COUNT、MAX、MIN 等 SQL 聚合函数；
 9. 尽量为计算结果设置清晰的别名，例如 AVG(score) AS avg_score；
 10. 除非用户明确要求查看原始记录，否则不要无目的地使用 SELECT *。
+11. 当前 create_chart 只支持 bar、scatter、histogram 和 line；
+12. 当用户明确要求当前不支持的图表类型，例如 pie、boxplot、
+    heatmap、violin plot 或 radar chart 时，不要调用任何数据工具，
+    不要生成替代图表，也不要假装图表已生成；
+13. 应诚实说明当前版本不支持该图表类型，并简要列出当前支持的
+    图表类型；只有用户明确同意替代方案后，才能调用对应工具。
 
 工具选择规则：
 - 整体概况、字段、缺失值、单个数值列的整体描述统计：优先使用 profile_dataset；
@@ -340,18 +370,35 @@ def run_tool_agent(question: str, dataset_path: str) -> AgentResponse:
             )
 
         # 模型可能一次请求一个或多个工具。
-        for tool_call in requested_tool_calls:
-            tool_record, tool_result = _execute_requested_tool(tool_call)
+        for raw_tool_call in assistant_message.tool_calls:
+            tool_started_at = perf_counter()
 
-            executed_tool_calls.append(tool_record)
+            requested_tool_call, tool_result = _execute_requested_tool(
+                raw_tool_call
+            )
+
+            duration_ms = (
+                                  perf_counter() - tool_started_at
+                          ) * 1000
+
+            append_tool_call_log(
+                question=question,
+                dataset_path=dataset_path,
+                tool_name=requested_tool_call.tool_name,
+                arguments=requested_tool_call.arguments,
+                success=tool_result.success,
+                result=tool_result.result,
+                error=tool_result.error,
+                duration_ms=duration_ms,
+            )
+
+            executed_tool_calls.append(requested_tool_call)
             tool_results.append(tool_result)
 
-            # Tool Message 的 content 必须是字符串。
-            # ensure_ascii=False 保证中文不会变成 \uXXXX。
             messages.append(
                 {
                     "role": "tool",
-                    "tool_call_id": tool_call.id,
+                    "tool_call_id": raw_tool_call.id,
                     "content": json.dumps(
                         tool_result.model_dump(),
                         ensure_ascii=False,

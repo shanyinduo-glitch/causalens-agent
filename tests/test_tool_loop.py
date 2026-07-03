@@ -661,3 +661,142 @@ def test_system_prompt_defines_scatter_evidence_boundaries():
     assert "不要把样本关联表述成适用于所有学生的一般规律" in (
         tool_loop.SYSTEM_PROMPT
     )
+
+
+def test_agent_logs_each_tool_execution(monkeypatch):
+    """
+    验证 Agent 每执行一次工具，
+    都会调用 append_tool_call_log 记录工具名称、参数、
+    成功状态和耗时。
+    """
+    dataset_path = "data/student_performance.csv"
+
+    model_responses = iter(
+        [
+            make_model_response(
+                tool_calls=[
+                    make_tool_call(
+                        tool_call_id="call_profile",
+                        tool_name="profile_dataset",
+                        arguments={
+                            "dataset_path": dataset_path,
+                        },
+                    )
+                ]
+            ),
+            make_model_response(
+                content="数据集包含 student_id、major 和 score 等字段。",
+            ),
+        ]
+    )
+
+    logged_records = []
+
+    def fake_create_chat_completion(**kwargs):
+        return next(model_responses)
+
+    def fake_profile_dataset(
+        dataset_path: str,
+    ) -> ToolResult:
+        return ToolResult(
+            tool_name="profile_dataset",
+            success=True,
+            result={
+                "rows": 40,
+                "columns": 8,
+                "column_names": [
+                    "student_id",
+                    "major",
+                    "score",
+                ],
+            },
+        )
+
+    def fake_append_tool_call_log(**kwargs):
+        logged_records.append(kwargs)
+
+    monkeypatch.setattr(
+        tool_loop,
+        "create_chat_completion",
+        fake_create_chat_completion,
+    )
+
+    monkeypatch.setattr(
+        tool_loop,
+        "TOOL_REGISTRY",
+        {
+            "profile_dataset": fake_profile_dataset,
+        },
+    )
+
+    monkeypatch.setattr(
+        tool_loop,
+        "append_tool_call_log",
+        fake_append_tool_call_log,
+    )
+
+    response = tool_loop.run_tool_agent(
+        question="这个数据集有哪些字段？",
+        dataset_path=dataset_path,
+    )
+
+    assert response.answer == (
+        "数据集包含 student_id、major 和 score 等字段。"
+    )
+
+    assert len(logged_records) == 1
+
+    log_record = logged_records[0]
+
+    assert log_record["question"] == "这个数据集有哪些字段？"
+    assert log_record["dataset_path"] == dataset_path
+    assert log_record["tool_name"] == "profile_dataset"
+    assert log_record["arguments"] == {
+        "dataset_path": dataset_path,
+    }
+    assert log_record["success"] is True
+    assert log_record["error"] is None
+    assert log_record["duration_ms"] >= 0
+
+
+def test_system_prompt_defines_general_chart_evidence_boundaries():
+    """
+    验证系统提示词对所有图表都规定了统一的证据边界，
+    防止模型将有限预览或基础统计扩写成未经计算的结论。
+    """
+    assert "图表解释的通用证据边界" in tool_loop.SYSTEM_PROMPT
+
+    assert "data_preview 只是一部分数据预览" in (
+        tool_loop.SYSTEM_PROMPT
+    )
+
+    assert "numeric_summary 只支持描述其中实际返回的统计指标" in (
+        tool_loop.SYSTEM_PROMPT
+    )
+
+    assert "relationship_summary 只支持描述其中实际返回的点数、范围和" in (
+        tool_loop.SYSTEM_PROMPT
+    )
+
+    assert "chart_path 只表示 PNG 已生成" in (
+        tool_loop.SYSTEM_PROMPT
+    )
+
+    assert "当前工具结果不足以支持该判断" in (
+        tool_loop.SYSTEM_PROMPT
+    )
+
+def test_system_prompt_rejects_unsupported_chart_requests():
+    """
+    验证系统提示词明确规定：
+    对当前不支持的图表类型，Agent 不得调用工具或擅自替代图表。
+    """
+    assert "当前 create_chart 只支持 bar、scatter、histogram 和 line" in (
+        tool_loop.SYSTEM_PROMPT
+    )
+
+    assert "不要调用任何数据工具" in tool_loop.SYSTEM_PROMPT
+
+    assert "不要生成替代图表" in tool_loop.SYSTEM_PROMPT
+
+    assert "只有用户明确同意替代方案后" in tool_loop.SYSTEM_PROMPT

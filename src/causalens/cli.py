@@ -5,6 +5,9 @@ from rich.console import Console
 
 from causalens.agent.tool_loop import run_tool_agent
 
+from rich.table import Table
+from rich.text import Text
+from causalens.response_evidence import build_evidence_rows
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -88,6 +91,42 @@ def ask(
                 f"[dim]- {tool_call.tool_name}"
                 f"({tool_call.arguments})[/dim]"
             )
+
+        if response.tool_results:
+            evidence_rows = build_evidence_rows(
+                response.tool_results,
+            )
+
+            evidence_table = Table(
+                title="执行依据（来自实际工具结果）",
+                show_lines=True,
+            )
+
+            evidence_table.add_column(
+                "工具",
+                style="cyan",
+                no_wrap=True,
+            )
+
+            evidence_table.add_column(
+                "状态",
+                no_wrap=True,
+            )
+
+            evidence_table.add_column(
+                "关键事实",
+                overflow="fold",
+            )
+
+            for evidence_row in evidence_rows:
+                evidence_table.add_row(
+                    Text(evidence_row["tool_name"]),
+                    Text(evidence_row["status"]),
+                    Text(evidence_row["evidence"]),
+                )
+
+            console.print()
+            console.print(evidence_table)
 
 
 if __name__ == "__main__":

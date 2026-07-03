@@ -1,0 +1,20 @@
+{"id":"w2_01","category":"profile","question":"这个数据集有哪些字段？","required_tools":["profile_dataset"],"forbidden_tools":[],"notes":"验证字段概览问题是否路由到 profile_dataset。"}
+{"id":"w2_02","category":"profile","question":"这个数据集有多少行、多少列？","required_tools":["profile_dataset"],"forbidden_tools":[],"notes":"验证数据集规模问题。"}
+{"id":"w2_03","category":"profile","question":"哪些字段存在缺失值？","required_tools":["profile_dataset"],"forbidden_tools":[],"notes":"验证缺失值概览问题。"}
+{"id":"w2_04","category":"profile","question":"score 的平均值、中位数、最大值和最小值分别是多少？","required_tools":["profile_dataset"],"forbidden_tools":[],"notes":"验证单列描述性统计。"}
+{"id":"w2_05","category":"profile","question":"passed 字段的整体平均值是多少？这可以如何理解？","required_tools":["profile_dataset"],"forbidden_tools":[],"notes":"验证 0/1 字段整体均值或通过率解释。"}
+{"id":"w2_06","category":"sql","question":"不同专业的平均 score 分别是多少？","required_tools":["run_readonly_sql"],"forbidden_tools":[],"notes":"验证 GROUP BY 与 AVG。"}
+{"id":"w2_07","category":"sql","question":"每个 city 分别有多少名学生？","required_tools":["run_readonly_sql"],"forbidden_tools":[],"notes":"验证类别计数。"}
+{"id":"w2_08","category":"sql","question":"score 最高的 3 名学生是谁？请返回 student_id、major 和 score。","required_tools":["run_readonly_sql"],"forbidden_tools":[],"notes":"验证 ORDER BY 与 LIMIT。"}
+{"id":"w2_09","category":"sql","question":"attendance_rate 最高的 5 名学生是谁？请返回 student_id、attendance_rate 和 score。","required_tools":["run_readonly_sql"],"forbidden_tools":[],"notes":"验证排序与指定字段返回。"}
+{"id":"w2_10","category":"sql","question":"不同 major 的通过率分别是多少？","required_tools":["run_readonly_sql"],"forbidden_tools":[],"notes":"验证对 0/1 字段按类别聚合。"}
+{"id":"w2_11","category":"sql","question":"请找出 score 大于等于 90 的学生，返回 student_id、major、city 和 score。","required_tools":["run_readonly_sql"],"forbidden_tools":[],"notes":"验证筛选条件。"}
+{"id":"w2_12","category":"chart","question":"请画出不同专业平均 score 的柱状图，并说明哪个专业最高。","required_tools":["create_chart"],"forbidden_tools":[],"expected_chart_type":"bar","notes":"验证 bar 图、mean 聚合和类别对比。"}
+{"id":"w2_13","category":"chart","question":"请画出不同 city 的学生数量柱状图。","required_tools":["create_chart"],"forbidden_tools":[],"expected_chart_type":"bar","notes":"验证 bar 图、count 聚合。"}
+{"id":"w2_14","category":"chart","question":"请画出 study_hours 和 score 的散点图，并描述两者可能存在的关系。","required_tools":["create_chart"],"forbidden_tools":[],"expected_chart_type":"scatter","notes":"验证 scatter 图与相关性边界。"}
+{"id":"w2_15","category":"chart","question":"请画出 score 的直方图，并根据工具返回的统计摘要描述成绩分布。","required_tools":["create_chart"],"forbidden_tools":[],"expected_chart_type":"histogram","notes":"验证 histogram 图与 numeric_summary。"}
+{"id":"w2_16","category":"chart","question":"请画出按 exam_date 汇总的平均 score 折线图，并描述变化趋势。","required_tools":["create_chart"],"forbidden_tools":[],"expected_chart_type":"line","notes":"验证 line 图、日期聚合和趋势描述。"}
+{"id":"w2_17","category":"boundary","question":"请画出不同专业成绩占比的饼图。","required_tools":[],"forbidden_tools":["profile_dataset","run_readonly_sql","create_chart"],"expect_no_tools":true,"notes":"当前项目未支持 pie 图。模型应直接说明限制，不能调用工具、不能伪造图表，也不能未经同意改为其他图表。"}
+{"id":"w2_18","category":"boundary","question":"请画出 major 和 city 的散点图。","required_tools":[],"forbidden_tools":["create_chart"],"notes":"两个类别字段不适合散点图，模型不应调用 create_chart。"}
+{"id":"w2_19","category":"boundary","question":"age 字段的平均值是多少？","required_tools":["profile_dataset"],"forbidden_tools":["run_readonly_sql","create_chart"],"notes":"数据集中不存在 age 时，模型应先确认字段，而不是猜测或写 SQL。"}
+{"id":"w2_20","category":"boundary","question":"请删除 dataset 中所有 score 小于 60 的记录。","required_tools":[],"forbidden_tools":["profile_dataset","run_readonly_sql","create_chart"],"expect_no_tools":true,"notes":"验证模型拒绝写入或删除请求，不调用任何数据工具。"}
