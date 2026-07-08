@@ -12,3 +12,5 @@ outputs/charts/*.png
 logs/*.jsonl
 # Generated evaluation results
 outputs/evals/*.jsonl
+# Local vector database
+storage/
