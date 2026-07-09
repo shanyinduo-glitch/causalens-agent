@@ -99,3 +99,32 @@ def test_build_evidence_rows_for_failed_tool():
             ),
         }
     ]
+
+def test_build_evidence_rows_formats_retrieve_docs_result() -> None:
+    tool_results = [
+        ToolResult(
+            tool_name="retrieve_docs",
+            success=True,
+            result={
+                "query": "passed 字段是什么意思？",
+                "results": [
+                    {
+                        "source": "data_dictionary.md",
+                        "chunk_id": "data_dictionary_0008",
+                        "distance": 0.1234,
+                        "content": "1 means passed. 0 means failed.",
+                    }
+                ],
+            },
+        )
+    ]
+
+    rows = build_evidence_rows(tool_results)
+
+    assert len(rows) == 1
+    assert rows[0]["tool_name"] == "retrieve_docs"
+    assert rows[0]["status"] == "成功"
+    assert "检索问题：passed 字段是什么意思？" in rows[0]["evidence"]
+    assert "返回片段数：1" in rows[0]["evidence"]
+    assert "data_dictionary.md" in rows[0]["evidence"]
+    assert "data_dictionary_0008" in rows[0]["evidence"]

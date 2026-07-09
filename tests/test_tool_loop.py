@@ -800,3 +800,11 @@ def test_system_prompt_rejects_unsupported_chart_requests():
     assert "不要生成替代图表" in tool_loop.SYSTEM_PROMPT
 
     assert "只有用户明确同意替代方案后" in tool_loop.SYSTEM_PROMPT
+
+
+def test_system_prompt_mentions_retrieve_docs() -> None:
+    from causalens.agent.tool_loop import SYSTEM_PROMPT
+
+    assert "retrieve_docs" in SYSTEM_PROMPT
+    assert "字段含义" in SYSTEM_PROMPT
+    assert "当前项目文档未提供该信息" in SYSTEM_PROMPT

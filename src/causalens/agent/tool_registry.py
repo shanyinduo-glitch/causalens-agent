@@ -1,12 +1,14 @@
 from causalens.tools.data_profile import profile_dataset
 from causalens.tools.sql_tool import run_readonly_sql
 from causalens.tools.chart_tool import create_chart
+from causalens.rag.rag_tool import retrieve_docs
 
 
 TOOL_REGISTRY = {
     "profile_dataset": profile_dataset,
     "run_readonly_sql": run_readonly_sql,
     "create_chart": create_chart,
+    "retrieve_docs": retrieve_docs,
 }
 
 
@@ -128,6 +130,39 @@ TOOLS = [
                     "chart_type",
                     "x_column",
                 ],
+            },
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "retrieve_docs",
+            "description": (
+                "Search project documentation, data dictionary, project background, "
+                "analysis rules, data processing notes, and business rules. "
+                "Use this tool when the user asks about column meanings, units, "
+                "possible values, dataset background, data collection, data limitations, "
+                "missing-value rules, standardization, analysis assumptions, "
+                "or whether a causal conclusion is supported."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": (
+                            "The user's documentation-related question to search "
+                            "in the local knowledge base."
+                        ),
+                    },
+                    "top_k": {
+                        "type": "integer",
+                        "description": "Number of relevant document chunks to retrieve.",
+                        "default": 3,
+                    },
+                },
+                "required": ["query"],
             },
         },
     },

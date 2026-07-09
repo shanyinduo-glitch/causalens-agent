@@ -131,6 +131,40 @@ def _build_chart_evidence(
     return "\n".join(parts)
 
 
+def _build_retrieve_docs_evidence(result: dict) -> str:
+    query = result.get("query", "")
+    retrieved_items = result.get("results", [])
+
+    if not retrieved_items:
+        return "未检索到相关项目文档片段。"
+
+    parts = [
+        f"检索问题：{query}",
+        f"返回片段数：{len(retrieved_items)}",
+    ]
+
+    sources = []
+
+    for item in retrieved_items:
+        source = item.get("source", "")
+        chunk_id = item.get("chunk_id", "")
+        distance = item.get("distance", None)
+
+        if not source:
+            continue
+
+        if distance is None:
+            sources.append(f"{source} ({chunk_id})")
+        else:
+            sources.append(f"{source} ({chunk_id}, distance={distance:.4f})")
+
+    if sources:
+        parts.append("来源片段：")
+        parts.extend(f"- {source}" for source in sources)
+
+    return "\n".join(parts)
+
+
 def build_evidence_rows(
     tool_results: list[ToolResult],
 ) -> list[dict[str, str]]:
@@ -166,11 +200,13 @@ def build_evidence_rows(
         elif tool_result.tool_name == "create_chart":
             evidence = _build_chart_evidence(result)
 
+        elif tool_result.tool_name == "retrieve_docs":
+            evidence = _build_retrieve_docs_evidence(result)
+
         else:
             result_keys = _format_columns(
                 list(result.keys()),
             )
-
             evidence = f"返回字段：{result_keys}"
 
         evidence_rows.append(
@@ -182,3 +218,39 @@ def build_evidence_rows(
         )
 
     return evidence_rows
+
+'''
+def _format_retrieve_docs_evidence(tool_result) -> str:
+    if not tool_result.success:
+        return "文档检索失败。"
+
+    result = tool_result.result or {}
+    query = result.get("query", "")
+    retrieved_items = result.get("results", [])
+
+    if not retrieved_items:
+        return "未检索到相关项目文档片段。"
+
+    parts = [
+        f"检索问题：{query}",
+        f"返回片段数：{len(retrieved_items)}",
+    ]
+
+    sources = []
+    for item in retrieved_items:
+        source = item.get("source", "")
+        chunk_id = item.get("chunk_id", "")
+        distance = item.get("distance", None)
+
+        if source:
+            if distance is None:
+                sources.append(f"{source} ({chunk_id})")
+            else:
+                sources.append(f"{source} ({chunk_id}, distance={distance:.4f})")
+
+    if sources:
+        parts.append("来源片段：")
+        parts.extend(f"- {source}" for source in sources)
+
+    return "\n".join(parts)
+'''

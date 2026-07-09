@@ -1,5 +1,6 @@
 from causalens.agent.tool_registry import TOOL_REGISTRY, TOOLS
 from causalens.tools.data_profile import profile_dataset
+from causalens.rag.rag_tool import retrieve_docs
 
 
 def test_profile_dataset_is_registered():
@@ -100,3 +101,18 @@ def test_create_chart_tool_definition():
         "chart_type",
         "x_column",
     ]
+
+
+def test_retrieve_docs_is_registered_in_tool_registry() -> None:
+    from causalens.agent.tool_registry import TOOL_REGISTRY
+
+    assert "retrieve_docs" in TOOL_REGISTRY
+    assert TOOL_REGISTRY["retrieve_docs"] is retrieve_docs
+
+
+def test_retrieve_docs_is_visible_to_model_tools() -> None:
+    from causalens.agent.tool_registry import TOOLS
+
+    tool_names = [tool["function"]["name"] for tool in TOOLS]
+
+    assert "retrieve_docs" in tool_names
