@@ -71,3 +71,21 @@ def test_prepare_chroma_records_rejects_length_mismatch() -> None:
 
     with pytest.raises(ValueError):
         prepare_chroma_records(chunks=chunks, embeddings=embeddings)
+
+    def test_prepare_chroma_records_preserves_section_metadata() -> None:
+        chunks = [
+            {
+                "chunk_id": "data_dictionary_0007",
+                "source": "data_dictionary.md",
+                "path": "knowledge/data_dictionary.md",
+                "content": "score means final examination score.",
+                "chunk_index": 7,
+                "section": "score",
+            }
+        ]
+
+        embeddings = [[0.1, 0.2, 0.3]]
+
+        records = prepare_chroma_records(chunks=chunks, embeddings=embeddings)
+
+        assert records["metadatas"][0]["section"] == "score"

@@ -23,8 +23,9 @@ def main() -> None:
 
     chunks = create_chunks_from_documents(
         documents=documents,
-        chunk_size=500,
-        chunk_overlap=80,
+        chunk_size=900,
+        chunk_overlap=120,
+        chunk_strategy="markdown_heading",
     )
 
     summary = build_vector_store(

@@ -49,16 +49,20 @@ def format_chroma_query_results(query_results: dict[str, Any]) -> list[dict[str,
         path = str(metadata.get("path", ""))
         chunk_index = metadata.get("chunk_index")
 
-        results.append(
-            {
-                "source": source,
-                "chunk_id": chunk_id,
-                "chunk_index": chunk_index,
-                "path": path,
-                "content": content,
-                "distance": distance,
-            }
-        )
+        result_item = {
+            "source": source,
+            "chunk_id": chunk_id,
+            "chunk_index": chunk_index,
+            "path": path,
+            "content": content,
+            "distance": distance,
+        }
+
+        section = metadata.get("section")
+        if section:
+            result_item["section"] = section
+
+        results.append(result_item)
 
     return results
 

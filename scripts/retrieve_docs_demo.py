@@ -40,6 +40,7 @@ def main() -> None:
             print("-" * 80)
             print(f"Rank: {index}")
             print(f"Source: {item['source']}")
+            print(f"Section: {item.get('section', '')}")
             print(f"Chunk ID: {item['chunk_id']}")
             print(f"Chunk Index: {item['chunk_index']}")
             print(f"Distance: {item['distance']}")

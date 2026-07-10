@@ -147,16 +147,21 @@ def _build_retrieve_docs_evidence(result: dict) -> str:
 
     for item in retrieved_items:
         source = item.get("source", "")
+        section = item.get("section", "")
         chunk_id = item.get("chunk_id", "")
         distance = item.get("distance", None)
 
         if not source:
             continue
 
+        source_label = source
+        if section:
+            source_label = f"{source}，{section}"
+
         if distance is None:
-            sources.append(f"{source} ({chunk_id})")
+            sources.append(f"{source_label} ({chunk_id})")
         else:
-            sources.append(f"{source} ({chunk_id}, distance={distance:.4f})")
+            sources.append(f"{source_label} ({chunk_id}, distance={distance:.4f})")
 
     if sources:
         parts.append("来源片段：")

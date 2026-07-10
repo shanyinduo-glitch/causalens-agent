@@ -808,3 +808,13 @@ def test_system_prompt_mentions_retrieve_docs() -> None:
     assert "retrieve_docs" in SYSTEM_PROMPT
     assert "字段含义" in SYSTEM_PROMPT
     assert "当前项目文档未提供该信息" in SYSTEM_PROMPT
+
+
+def test_system_prompt_distinguishes_documented_range_and_observed_range() -> None:
+    from causalens.agent.tool_loop import SYSTEM_PROMPT
+
+    assert "字段范围问题" in SYSTEM_PROMPT
+    assert "文档定义范围" in SYSTEM_PROMPT
+    assert "当前样本实际范围" in SYSTEM_PROMPT
+    assert "只调用 retrieve_docs" in SYSTEM_PROMPT
+    assert "不要主动追加 profile_dataset" in SYSTEM_PROMPT

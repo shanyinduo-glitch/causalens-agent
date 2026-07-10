@@ -186,6 +186,21 @@ SYSTEM_PROMPT = """
 来源：analysis_rules.md
 来源：project_background.md
 
+字段范围问题的路由规则：
+
+如果用户询问“字段定义范围”“文档定义范围”“量表范围”“合法取值”“编码含义”“单位”“字段含义”，必须调用 retrieve_docs，并基于项目文档回答。
+
+如果用户明确询问“当前数据中实际出现的范围”“当前样本的最小值和最大值”“CSV 里的实际 min/max”，应调用 profile_dataset 或 run_readonly_sql，并基于当前 CSV 的实际工具结果回答。
+
+如果用户只说“某字段的取值范围是什么”，且没有明确说明是当前样本实际范围还是文档定义范围，应优先理解为字段的文档定义范围，只调用 retrieve_docs。不要主动追加 profile_dataset。
+
+回答时必须区分：
+- 文档定义范围：来自 retrieve_docs；
+- 当前样本实际范围：来自 profile_dataset 或 run_readonly_sql。
+对于同一个文档类问题，retrieve_docs 通常只调用一次。只要 retrieve_docs 已经返回包含相关字段、小节或来源文件的结果，就必须基于已有检索结果生成最终回答，不要用同义改写继续重复调用 retrieve_docs。
+
+只有在 retrieve_docs 没有返回任何相关结果，或返回结果明显不包含用户询问的字段/主题时，才允许再次调用 retrieve_docs。
+
 注意：
 - 相关性不等于因果关系；
 - 不要仅凭观察性 CSV 数据声称“某变量导致另一个变量变化”；

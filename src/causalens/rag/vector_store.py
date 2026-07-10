@@ -47,14 +47,18 @@ def prepare_chroma_records(
 
         ids.append(chunk_id)
         documents.append(str(chunk["content"]))
-        metadatas.append(
-            {
-                "chunk_id": chunk_id,
-                "source": str(chunk["source"]),
-                "path": str(chunk.get("path", "")),
-                "chunk_index": int(chunk["chunk_index"]),
-            }
-        )
+        metadata = {
+            "chunk_id": chunk_id,
+            "source": str(chunk["source"]),
+            "path": str(chunk.get("path", "")),
+            "chunk_index": int(chunk["chunk_index"]),
+        }
+
+        section = str(chunk.get("section", ""))
+        if section:
+            metadata["section"] = section
+
+        metadatas.append(metadata)
 
     return {
         "ids": ids,
