@@ -1,0 +1,15 @@
+{"case_id":"w3_01","type":"field_definition","question":"passed 字段是什么意思？","expected_tools":["retrieve_docs"],"expected_sources":["data_dictionary.md"],"expected_answer_contains":["通过","未通过"]}
+{"case_id":"w3_02","type":"field_unit","question":"study_hours 的单位是什么？","expected_tools":["retrieve_docs"],"expected_sources":["data_dictionary.md"],"expected_answer_contains":["hours per week","小时"]}
+{"case_id":"w3_03","type":"documented_range","question":"score 的取值范围是什么？","expected_tools":["retrieve_docs"],"expected_sources":["data_dictionary.md"],"expected_answer_contains":["0","100"]}
+{"case_id":"w3_04","type":"field_format","question":"exam_date 是什么格式？","expected_tools":["retrieve_docs"],"expected_sources":["data_dictionary.md"],"expected_answer_contains":["YYYY-MM-DD"]}
+{"case_id":"w3_05","type":"possible_values","question":"major 字段有哪些合法取值？","expected_tools":["retrieve_docs"],"expected_sources":["data_dictionary.md"],"expected_answer_contains":["math","cs","stats"]}
+{"case_id":"w3_06","type":"observed_range","question":"当前 CSV 中 score 实际出现的最小值和最大值是多少？","expected_any_tools":["profile_dataset","run_readonly_sql"],"forbidden_tools":["create_chart"],"expected_answer_contains":["52","98"]}
+{"case_id":"w3_07","type":"sql_summary","question":"不同专业的平均 score 分别是多少？","expected_tools":["run_readonly_sql"],"forbidden_tools":["create_chart"],"expected_answer_contains":["score"]}
+{"case_id":"w3_08","type":"data_background","question":"这份数据是真实教育数据吗？","expected_tools":["retrieve_docs"],"expected_sources":["project_background.md"],"expected_answer_contains":["模拟","simulated"]}
+{"case_id":"w3_09","type":"causal_boundary","question":"这份数据是否适合直接得出因果结论？","expected_tools":["retrieve_docs"],"expected_sources":["analysis_rules.md"],"expected_answer_contains":["因果","不足"]}
+{"case_id":"w3_10","type":"analysis_rule","question":"相关性可以直接证明因果关系吗？","expected_tools":["retrieve_docs"],"expected_sources":["analysis_rules.md"],"expected_answer_contains":["不能","因果"]}
+{"case_id":"w3_11","type":"processing_rule","question":"score 是否经过标准化处理？","expected_tools":["retrieve_docs"],"expected_sources":["data_dictionary.md"],"expected_answer_contains":["标准化"]}
+{"case_id":"w3_12","type":"missing_info","question":"学生的具体学校名称是什么？","expected_tools":["retrieve_docs"],"expected_answer_contains":["学校","无法"]}
+{"case_id":"w3_13","type":"missing_value_rule","question":"缺失值是如何处理的？","expected_tools":["retrieve_docs"],"expected_sources":["data_dictionary.md"],"expected_answer_contains":["未提供","无法确认"]}
+{"case_id":"w3_14","type":"chart","question":"请画出 study_hours 与 score 的散点图。","expected_tools":["create_chart"],"forbidden_tools":["retrieve_docs"],"expected_answer_contains":["图"]}
+{"case_id":"w3_15","type":"mixed_routing","question":"这份数据适合做什么类型的分析？","expected_tools":["retrieve_docs"],"expected_sources":["project_background.md"],"expected_answer_contains":["探索","分析"]}

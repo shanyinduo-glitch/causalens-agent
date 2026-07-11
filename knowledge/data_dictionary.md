@@ -1,10 +1,10 @@
 # Student Performance Dataset Data Dictionary
 
-# 学生成绩数据集数据字典
+**中文名称：** 学生成绩数据集数据字典
 
 ## Dataset Overview
 
-## 数据集概览
+**中文名称：** 数据集概览
 
 This dataset records student learning behavior and examination performance.
 
@@ -30,11 +30,11 @@ This dataset records student learning behavior and examination performance.
 
 ## Column Definitions
 
-## 字段说明
+**中文名称：** 字段说明
 
 ### student_id
 
-### 学生唯一标识
+**中文名称：** 学生唯一标识
 
 Unique identifier for each student.
 
@@ -54,7 +54,7 @@ Unique identifier for each student.
 
 ### major
 
-### 专业
+**中文名称：** 专业
 
 Student major.
 
@@ -74,7 +74,7 @@ Student major.
 
 ### city
 
-### 学习城市
+**中文名称：** 学习城市
 
 City where the student studies.
 
@@ -94,7 +94,7 @@ City where the student studies.
 
 ### study_hours
 
-### 每周学习时长
+**中文名称：** 每周学习时长
 
 Average weekly study hours.
 
@@ -109,12 +109,15 @@ Average weekly study hours.
 * Missing values: allowed by the documented schema
   缺失值：按照当前字段定义允许缺失。
 
+* Important distinction: “allowed” means the schema permits missing values. It does not mean the current CSV necessarily contains missing values.
+  重要区分：“允许缺失”仅表示字段规则允许空值，不代表当前 CSV 一定实际存在缺失。
+
 * Interpretation note: this field describes study time and can be used for descriptive analysis, association analysis, regression, and visualization. It does not by itself establish a causal effect on score.
   解释说明：该字段可用于描述性分析、关联分析、回归和可视化；但仅凭该字段不能证明其对成绩存在因果影响。
 
 ### attendance_rate
 
-### 出勤率
+**中文名称：** 出勤率
 
 Class attendance rate.
 
@@ -134,7 +137,7 @@ Class attendance rate.
 
 ### score
 
-### 最终考试成绩
+**中文名称：** 最终考试成绩
 
 Final examination score.
 
@@ -152,9 +155,12 @@ Final examination score.
 * Standardization status: the current documentation does not state that this variable has been standardized, normalized, or transformed.
   标准化状态：当前文档没有说明该变量经过标准化、归一化或其他转换。
 
+* Important evidence boundary: because the documentation only says that standardization is not stated, the correct answer is that the standardization status cannot be confirmed from the current documentation. Do not conclude that the variable definitely was or was not standardized unless another document explicitly provides that evidence.
+  重要证据边界：由于文档只说明“没有说明是否标准化”，正确回答应是“当前文档无法确认其标准化状态”。除非其他文档明确提供证据，不能断言该变量一定经过或一定没有经过标准化处理。
+
 ### passed
 
-### 是否通过考试
+**中文名称：** 是否通过考试
 
 Whether the student passed the examination.
 
@@ -174,7 +180,7 @@ Whether the student passed the examination.
 
 ### exam_date
 
-### 考试日期
+**中文名称：** 考试日期
 
 Date of the examination.
 
@@ -191,22 +197,22 @@ Date of the examination.
 
 ## Data Processing Status
 
-## 数据处理状态
+**中文名称：** 数据处理状态
 
 The current project documentation does not provide evidence of a specific missing-value imputation procedure, outlier-removal procedure, score transformation procedure, or feature-engineering pipeline.
 
 当前项目文档没有提供以下处理流程的具体证据：
 
-* missing-value imputation
+* Missing-value imputation
   缺失值填补；
 
-* outlier removal or winsorization
+* Outlier removal or winsorization
   异常值删除或缩尾处理；
 
-* score standardization or normalization
+* Score standardization or normalization
   成绩标准化或归一化；
 
-* feature engineering
+* Feature engineering
   特征工程。
 
 Therefore, when users ask whether one of these procedures was applied, the correct response is:
@@ -216,3 +222,11 @@ Therefore, when users ask whether one of these procedures was applied, the corre
 因此，当用户询问是否进行过上述处理时，正确回答应是：
 
 > 当前文档未提供该信息，因此无法确认。
+
+Important evidence boundary:
+
+If the documentation says that a procedure is “not stated,” “not specified,” or “not provided,” the assistant must preserve that uncertainty. It must not convert missing documentation into a definite claim that the procedure was not applied.
+
+重要证据边界：
+
+如果文档表述为“未说明”“未规定”或“未提供”，助手必须保留这种不确定性，不能把“文档未提供证据”改写成“确定没有进行该处理”。

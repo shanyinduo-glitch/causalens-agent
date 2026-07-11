@@ -201,6 +201,8 @@ SYSTEM_PROMPT = """
 
 只有在 retrieve_docs 没有返回任何相关结果，或返回结果明显不包含用户询问的字段/主题时，才允许再次调用 retrieve_docs。
 
+如果项目文档表述为“未说明”“没有说明”“does not state”“未提供证据”，最终回答必须保留这种不确定性。不能把“文档未说明经过某处理”改写成“确定没有经过某处理”。
+
 注意：
 - 相关性不等于因果关系；
 - 不要仅凭观察性 CSV 数据声称“某变量导致另一个变量变化”；
@@ -445,12 +447,44 @@ def run_tool_agent(question: str, dataset_path: str) -> AgentResponse:
             )
 
     # 防止模型反复调用工具，导致无限循环或过多 Token 消耗。
-    return AgentResponse(
-        answer=(
+    final_messages = messages + [
+        {
+            "role": "user",
+            "content": (
+                f"你已经达到最多 {MAX_TOOL_ROUNDS} 轮工具调用限制。"
+                "现在禁止继续调用任何工具。"
+                "请只基于上面已有的工具调用结果生成最终回答。"
+                "如果工具结果已经足够回答用户问题，请直接给出答案。"
+                "如果工具结果不足，请明确说明当前证据不足。"
+                "最终回答必须简洁、可读，并尽量标注来源。"
+            ),
+        }
+    ]
+
+    try:
+        final_response = create_chat_completion(
+            messages=final_messages,
+        )
+
+        final_answer = (
+                final_response.choices[0].message.content or ""
+        ).strip()
+
+    except Exception as exc:
+        final_answer = (
+            f"已达到最多 {MAX_TOOL_ROUNDS} 轮工具调用限制，"
+            f"并且最终回答兜底调用失败：{exc}"
+        )
+
+    if not final_answer:
+        final_answer = (
             f"已达到最多 {MAX_TOOL_ROUNDS} 轮工具调用限制，"
             "模型仍未生成最终回答。"
-        ),
+        )
+
+    return AgentResponse(
+        answer=final_answer,
         tool_calls=executed_tool_calls,
         tool_results=tool_results,
-        confidence="low",
+        confidence="medium",
     )
