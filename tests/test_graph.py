@@ -224,10 +224,17 @@ def test_route_after_intent_sends_unsupported_to_reporter() -> None:
     assert route_after_intent(state) == "reporter"
 
 
-def test_initial_state_fields_are_preserved() -> None:
+def test_initial_state_fields_are_preserved(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """
     图执行结束后，应保留输入数据路径、问题和步数上限。
     """
+
+    monkeypatch.setattr(
+        "causalens.agent.nodes.create_chat_completion",
+        make_fake_chat_completion(),
+    )
 
     result = run_causalens_graph(
         dataset_path=DATASET_PATH,
@@ -244,11 +251,18 @@ def test_initial_state_fields_are_preserved() -> None:
     assert result["tool_results"][0]["success"] is True
 
 
-def test_graph_executes_sql_tool() -> None:
+def test_graph_executes_sql_tool(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """
     SQL 分析任务应该执行 run_readonly_sql，
     并保存调用与结果历史。
     """
+
+    monkeypatch.setattr(
+        "causalens.agent.nodes.create_chat_completion",
+        make_fake_chat_completion(),
+    )
 
     result = run_causalens_graph(
         dataset_path=DATASET_PATH,
