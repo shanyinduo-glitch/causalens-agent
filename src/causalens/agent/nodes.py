@@ -30,6 +30,9 @@ DOC_INTENT_KEYWORDS = [
     "字段含义",
     "什么意思",
     "单位是什么",
+    "的单位",
+    "单位是",
+    "单位为",
     "合法取值",
     "编码含义",
     "数据背景",
@@ -779,6 +782,45 @@ def _validate_pending_tool_call(
     return []
 
 
+RAG_SUBQUESTION_SPLIT_MARKERS = [
+    "，并统计",
+    "并统计",
+    "，并计算",
+    "并计算",
+    "，并画出",
+    "并画出",
+    "，并绘制",
+    "并绘制",
+    "，同时统计",
+    "同时统计",
+    "，然后统计",
+    "然后统计",
+]
+
+
+def _extract_rag_subquestion(question: str) -> str:
+    """
+    从简单混合问题中提取文档检索部分。
+
+    例如：
+    “请解释 passed 字段含义，并统计不同 passed 值的平均 score。”
+    →
+    “请解释 passed 字段含义”
+    """
+
+    rag_query = question.strip()
+
+    for marker in RAG_SUBQUESTION_SPLIT_MARKERS:
+        if marker in rag_query:
+            rag_query = rag_query.split(
+                marker,
+                maxsplit=1,
+            )[0]
+            break
+
+    return rag_query.strip(" ，。；;")
+
+
 def _normalize_tool_arguments(
     tool_name: str,
     arguments: dict[str, Any],
@@ -1081,6 +1123,22 @@ def tool_decision_node(state: AgentState) -> AgentState:
         "create_chart",
     }:
         arguments["dataset_path"] = dataset_path
+
+    # 对单一文档问答任务，直接保留用户原始问题作为检索 query。
+    # 避免模型添加数据集名称或堆叠关键词，反而降低向量检索准确性。
+    if tool_name == "retrieve_docs":
+        if task_type == "rag_question":
+            # 单一文档问题直接保留用户原问题。
+            arguments["query"] = question
+
+        elif task_type == "mixed_analysis":
+            # 混合任务只检索其中的字段定义或规则部分，
+            # 避免统计、绘图需求干扰向量检索。
+            arguments["query"] = _extract_rag_subquestion(
+                question
+            )
+
+        arguments.setdefault("top_k", 3)
 
 
     pending_tool_call = {
@@ -1513,9 +1571,19 @@ def reporter_node(state: AgentState) -> AgentState:
                 "8. 如果生成了图表，应提供 chart_path。\n"
                 "9. 相关性不能证明因果关系。\n"
                 "10. 文档表述为未说明或无法确认时，必须保留不确定性。\n"
-                "不得编造数字、字段、来源、单位或结论。"
-                "11.描述图表坐标轴时，应使用工具实际返回的字段名和聚合方式。"
+                "不得编造数字、字段、来源、单位或结论。\n"
+                "11. 描述图表坐标轴时，应使用工具实际返回的字段名和聚合方式，"
                 "不得自行创造 mean_score、avg_score 等未明确返回的字段名称。\n"
+                "12. 对直方图或数值分布，如果工具只返回 count、mean、median、"
+                "min 和 max，只能陈述这些统计量及实际取值范围。"
+                "除非工具明确返回 skewness、标准差、四分位数、区间频数或"
+                "其他分布形状证据，否则不得判断偏态、对称性、集中程度、"
+                "峰值区间或长尾特征。\n"
+                "13. 如果 create_chart 返回 relationship_summary，最终回答必须总结"
+                "其中实际提供的数据点数量、x/y 取值范围和 Pearson 相关系数。"
+                "当 Pearson 相关系数为正时，只能表述为当前样本中的正向线性关联；"
+                "为负时，只能表述为负向线性关联。"
+                "不得把相关关系解释为因果效应，并应明确提醒相关性不能证明因果关系。\n"
             ),
         },
         {
