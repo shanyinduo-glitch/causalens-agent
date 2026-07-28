@@ -7,7 +7,7 @@ from causalens.agent.tool_registry import TOOLS
 
 
 DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-DEFAULT_MODEL_NAME = "qwen3.7-plus"
+DEFAULT_MODEL_NAME = "qwen3.7-flash-2026-07-15"
 
 
 def get_qwen_client() -> OpenAI:
@@ -52,9 +52,10 @@ def create_chat_completion(
     if tool_choice is not None:
         request_kwargs["tool_choice"] = tool_choice
 
-    client = get_qwen_client()
-
-    return client.chat.completions.create(**request_kwargs)
+    with get_qwen_client() as client:
+        return client.chat.completions.create(
+            **request_kwargs,
+        )
 
 
 def request_tool_call(user_question: str):
