@@ -1490,19 +1490,125 @@ def result_checker_node(state: AgentState) -> AgentState:
     }
 
 
+def _append_missing_chart_evidence(
+    final_answer: str,
+    tool_results: list[dict[str, Any]],
+) -> str:
+    """
+    当散点图工具返回 relationship_summary，
+    但模型回答没有完整使用这些证据时，
+    确定性追加事实摘要和因果边界。
+    """
+
+    answer = final_answer.strip()
+
+    for tool_result in tool_results:
+        if (
+            tool_result.get("tool_name")
+            != "create_chart"
+        ):
+            continue
+
+        if tool_result.get("success") is not True:
+            continue
+
+        result = tool_result.get("result")
+
+        if not isinstance(result, dict):
+            continue
+
+        relationship = result.get(
+            "relationship_summary"
+        )
+
+        if not isinstance(relationship, dict):
+            continue
+
+        required_keys = [
+            "point_count",
+            "x_min",
+            "x_max",
+            "y_min",
+            "y_max",
+            "pearson_correlation",
+        ]
+
+        if not all(
+            key in relationship
+            for key in required_keys
+        ):
+            continue
+
+        point_count = relationship["point_count"]
+        x_min = relationship["x_min"]
+        x_max = relationship["x_max"]
+        y_min = relationship["y_min"]
+        y_max = relationship["y_max"]
+        correlation = relationship[
+            "pearson_correlation"
+        ]
+
+        evidence_already_present = all(
+            str(value) in answer
+            for value in (
+                point_count,
+                correlation,
+            )
+        )
+
+        causality_warning_present = (
+            "因果" in answer
+        )
+
+        if (
+            evidence_already_present
+            and causality_warning_present
+        ):
+            continue
+
+        supplement = (
+            "\n\n根据图表工具返回的关系摘要："
+            f"共绘制 {point_count} 个数据点；"
+            f"横轴取值范围为 {x_min} 至 {x_max}；"
+            f"纵轴取值范围为 {y_min} 至 {y_max}；"
+            f"Pearson 相关系数为 {correlation}。"
+            "这些结果反映当前样本中的统计相关关系，"
+            "不能据此证明因果关系。"
+        )
+
+        answer += supplement
+
+    return answer
+
+
 def reporter_node(state: AgentState) -> AgentState:
     """
     根据真实工具结果生成最终回答。
+
+    模型负责把结构化工具结果整理成自然语言，
+    Python 负责在模型遗漏散点图关系摘要时进行确定性补充。
     """
 
-    question = state.get("question", "")
-    task_type = state.get("task_type", "unsupported")
+    question = str(
+        state.get("question") or ""
+    )
+    task_type = str(
+        state.get("task_type") or "unsupported"
+    )
     plan = state.get("plan", [])
     tool_results = state.get("tool_results", [])
     error = state.get("error")
 
+    # 防止状态字段为 None 或其他意外类型。
+    if not isinstance(plan, list):
+        plan = []
+
+    if not isinstance(tool_results, list):
+        tool_results = []
+
     print("\n[reporter_node] 开始生成最终回答")
 
+    # 不支持或具有破坏性的请求不进入工具结果总结。
     if task_type == "unsupported":
         final_answer = (
             f"问题：{question}\n\n"
@@ -1517,6 +1623,7 @@ def reporter_node(state: AgentState) -> AgentState:
             "workflow_status": "completed",
         }
 
+    # 工作流已经记录错误时，直接返回失败说明。
     if error:
         return {
             "final_answer": (
@@ -1526,6 +1633,7 @@ def reporter_node(state: AgentState) -> AgentState:
             "workflow_status": "failed",
         }
 
+    # 支持的分析任务必须具有实际工具结果。
     if not tool_results:
         return {
             "final_answer": (
@@ -1538,8 +1646,14 @@ def reporter_node(state: AgentState) -> AgentState:
 
     plan_text = "\n".join(
         f"{index}. {step}"
-        for index, step in enumerate(plan, start=1)
+        for index, step in enumerate(
+            plan,
+            start=1,
+        )
     )
+
+    if not plan_text:
+        plan_text = "未生成明确的分析计划。"
 
     serialized_tool_results = json.dumps(
         tool_results,
@@ -1555,35 +1669,50 @@ def reporter_node(state: AgentState) -> AgentState:
                 "你是 CausaLens 的最终报告节点。\n"
                 "请使用清晰、简洁的中文回答用户问题。\n"
                 "工具结果是回答事实的唯一依据，不得补充工具没有返回的信息。\n\n"
+
                 "必须遵守以下证据规则：\n"
+
                 "1. profile_dataset 只能证明行数、列数、字段名、数据类型、"
                 "缺失值数量和它实际返回的描述性统计。\n"
+
                 "2. 仅凭字段名不能推测字段含义、中文名称、单位、编码规则"
                 "或业务含义。\n"
+
                 "3. 字段含义、单位、合法取值和编码含义，只有在 "
                 "retrieve_docs 返回相关文档证据时才能说明。\n"
+
                 "4. 用户只询问字段列表时，直接列出字段名即可，不要自行"
                 "增加字段解释。\n"
+
                 "5. SQL 结果只能支持其中实际返回的字段和数值。\n"
+
                 "6. 图表结果只能根据 data_preview、numeric_summary、"
                 "relationship_summary 等实际返回内容解释。\n"
+
                 "7. 如果使用了 retrieve_docs，应标注可用的来源文件或 section。\n"
+
                 "8. 如果生成了图表，应提供 chart_path。\n"
+
                 "9. 相关性不能证明因果关系。\n"
-                "10. 文档表述为未说明或无法确认时，必须保留不确定性。\n"
+
+                "10. 文档表述为未说明或无法确认时，必须保留不确定性。"
                 "不得编造数字、字段、来源、单位或结论。\n"
+
                 "11. 描述图表坐标轴时，应使用工具实际返回的字段名和聚合方式，"
                 "不得自行创造 mean_score、avg_score 等未明确返回的字段名称。\n"
+
                 "12. 对直方图或数值分布，如果工具只返回 count、mean、median、"
                 "min 和 max，只能陈述这些统计量及实际取值范围。"
                 "除非工具明确返回 skewness、标准差、四分位数、区间频数或"
                 "其他分布形状证据，否则不得判断偏态、对称性、集中程度、"
                 "峰值区间或长尾特征。\n"
+
                 "13. 如果 create_chart 返回 relationship_summary，最终回答必须总结"
                 "其中实际提供的数据点数量、x/y 取值范围和 Pearson 相关系数。"
                 "当 Pearson 相关系数为正时，只能表述为当前样本中的正向线性关联；"
-                "为负时，只能表述为负向线性关联。"
-                "不得把相关关系解释为因果效应，并应明确提醒相关性不能证明因果关系。\n"
+                "为负时，只能表述为当前样本中的负向线性关联。"
+                "不得把相关关系解释为因果效应，"
+                "并应明确提醒相关性不能证明因果关系。\n"
             ),
         },
         {
@@ -1603,7 +1732,8 @@ def reporter_node(state: AgentState) -> AgentState:
         )
 
         final_answer = (
-            response.choices[0].message.content or ""
+            response.choices[0].message.content
+            or ""
         ).strip()
 
     except Exception as exc:
@@ -1618,6 +1748,14 @@ def reporter_node(state: AgentState) -> AgentState:
             "工具已经执行成功，但模型没有生成可读回答。\n\n"
             f"原始工具结果：\n{serialized_tool_results}"
         )
+
+    # 当 create_chart 返回散点图关系摘要，
+    # 但模型遗漏数据点数量、变量范围、相关系数或因果边界时，
+    # 使用真实工具结果进行确定性补充。
+    final_answer = _append_missing_chart_evidence(
+        final_answer=final_answer,
+        tool_results=tool_results,
+    )
 
     print("[reporter_node] 最终回答已生成")
 

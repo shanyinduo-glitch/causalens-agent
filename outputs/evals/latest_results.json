@@ -2,7 +2,7 @@
   "suite_name": "CausaLens MVP Evaluation",
   "version": "1.0",
   "description": "验证 CausaLens Agent 在正式 LangGraph 工作流下的路由、工具选择、执行顺序、回答证据和安全边界。",
-  "generated_at": "2026-07-28T18:14:58",
+  "generated_at": "2026-07-30T15:49:35",
   "cases_path": "evals\\mvp_cases.json",
   "dataset_path": "data/student_performance.csv",
   "max_steps": 5,
@@ -16,7 +16,7 @@
       "category": "data_profile",
       "question": "这个数据集有哪些字段？",
       "passed": true,
-      "duration_seconds": 9.5974,
+      "duration_seconds": 6.0839,
       "expected": {
         "task_type": "data_profile",
         "workflow_status": "completed",
@@ -33,6 +33,7 @@
           "passed",
           "exam_date"
         ],
+        "answer_must_include_numbers": [],
         "answer_must_not_include": []
       },
       "actual": {
@@ -41,7 +42,7 @@
         "tool_order": [
           "profile_dataset"
         ],
-        "final_answer": "该数据集包含以下字段：\n- student_id\n- major\n- city\n- study_hours\n- attendance_rate\n- score\n- passed\n- exam_date",
+        "final_answer": "该数据集包含以下字段：\n`student_id`、`major`、`city`、`study_hours`、`attendance_rate`、`score`、`passed`、`exam_date`。",
         "step_count": 1,
         "error": null
       },
@@ -51,9 +52,11 @@
         "tool_order_matches": true,
         "final_answer_not_empty": true,
         "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
         "answer_avoids_forbidden_terms": true
       },
       "missing_required_terms": [],
+      "missing_required_numbers": [],
       "forbidden_terms_found": [],
       "execution_error": null,
       "traceback": null
@@ -63,7 +66,7 @@
       "category": "rag_question",
       "question": "passed 字段是什么意思？",
       "passed": true,
-      "duration_seconds": 27.8021,
+      "duration_seconds": 31.1095,
       "expected": {
         "task_type": "rag_question",
         "workflow_status": "completed",
@@ -76,6 +79,7 @@
           "1",
           "0"
         ],
+        "answer_must_include_numbers": [],
         "answer_must_not_include": [
           "及格分数线为 60",
           "通过阈值为 60"
@@ -87,7 +91,7 @@
         "tool_order": [
           "retrieve_docs"
         ],
-        "final_answer": "根据知识库检索结果，`passed` 字段的含义如下（来源：`knowledge/data_dictionary.md`，section: `passed`）：\n\n* **中文名称**：是否通过考试\n* **含义**：用于标识学生是否通过了一项考试。\n* **类型与取值编码**：二元变量（binary）。`1` 表示通过考试，`0` 表示未通过考试。\n* **补充说明**：当前文档明确界定该字段仅为二元状态标签，**未提供具体的通过分数线或评分阈值**。除非后续有其他文档明确补充，否则无法推断判定“通过”的具体分数标准。",
+        "final_answer": "根据检索到的项目知识库文档（来源：`data_dictionary.md`，章节：`passed`），`passed` 字段的含义如下：\n\n- **中文名称**：是否通过考试\n- **数据类型**：二元变量（binary）\n- **取值含义**：`1` 表示通过考试，`0` 表示未通过考试。\n- **重要提示**：当前文档仅定义了该字段的二元标签含义，**并未规定具体的通过分数线**。文档明确指出不能自行推断通过阈值，如需了解具体评分标准，需依赖其他明确提供该规则的文档。",
         "step_count": 1,
         "error": null
       },
@@ -97,9 +101,11 @@
         "tool_order_matches": true,
         "final_answer_not_empty": true,
         "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
         "answer_avoids_forbidden_terms": true
       },
       "missing_required_terms": [],
+      "missing_required_numbers": [],
       "forbidden_terms_found": [],
       "execution_error": null,
       "traceback": null
@@ -109,7 +115,7 @@
       "category": "rag_question",
       "question": "study_hours 的单位是什么？",
       "passed": true,
-      "duration_seconds": 14.2366,
+      "duration_seconds": 15.8538,
       "expected": {
         "task_type": "rag_question",
         "workflow_status": "completed",
@@ -120,6 +126,7 @@
           "study_hours",
           "小时/周"
         ],
+        "answer_must_include_numbers": [],
         "answer_must_not_include": []
       },
       "actual": {
@@ -128,7 +135,7 @@
         "tool_order": [
           "retrieve_docs"
         ],
-        "final_answer": "根据检索到的项目文档《data_dictionary.md》（章节：study_hours）中的明确说明，字段 `study_hours` 的单位为**小时/周**。",
+        "final_answer": "根据检索到的项目文档（`data_dictionary.md`，`study_hours` 章节），`study_hours` 的单位为**小时/周**（hours per week）。",
         "step_count": 1,
         "error": null
       },
@@ -138,9 +145,11 @@
         "tool_order_matches": true,
         "final_answer_not_empty": true,
         "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
         "answer_avoids_forbidden_terms": true
       },
       "missing_required_terms": [],
+      "missing_required_numbers": [],
       "forbidden_terms_found": [],
       "execution_error": null,
       "traceback": null
@@ -150,7 +159,7 @@
       "category": "sql_analysis",
       "question": "不同专业的平均 score 分别是多少？",
       "passed": true,
-      "duration_seconds": 12.1663,
+      "duration_seconds": 14.358,
       "expected": {
         "task_type": "sql_analysis",
         "workflow_status": "completed",
@@ -165,6 +174,7 @@
           "79.57",
           "74.69"
         ],
+        "answer_must_include_numbers": [],
         "answer_must_not_include": []
       },
       "actual": {
@@ -173,7 +183,7 @@
         "tool_order": [
           "run_readonly_sql"
         ],
-        "final_answer": "根据SQL查询结果，不同专业的平均分数（`avg_score`）具体如下：\n- **cs**：81.23076923076923\n- **math**：79.57142857142857\n- **stats**：74.6923076923077\n\n（注：数值直接来源于工具实际返回的数据库查询结果。）",
+        "final_answer": "根据工具返回的SQL查询结果，不同专业的平均分数分别为：\n- **cs**：81.23076923076923\n- **math**：79.57142857142857\n- **stats**：74.6923076923077",
         "step_count": 1,
         "error": null
       },
@@ -183,9 +193,11 @@
         "tool_order_matches": true,
         "final_answer_not_empty": true,
         "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
         "answer_avoids_forbidden_terms": true
       },
       "missing_required_terms": [],
+      "missing_required_numbers": [],
       "forbidden_terms_found": [],
       "execution_error": null,
       "traceback": null
@@ -195,7 +207,7 @@
       "category": "chart_analysis",
       "question": "请画出 score 的分布图。",
       "passed": true,
-      "duration_seconds": 14.5849,
+      "duration_seconds": 11.4193,
       "expected": {
         "task_type": "chart_analysis",
         "workflow_status": "completed",
@@ -210,6 +222,7 @@
           "52",
           "98"
         ],
+        "answer_must_include_numbers": [],
         "answer_must_not_include": [
           "轻微左偏",
           "轻微右偏",
@@ -223,7 +236,7 @@
         "tool_order": [
           "create_chart"
         ],
-        "final_answer": "已为您生成 `score` 的分布图（直方图）。\n\n**图表路径**：`outputs/charts/score_distribution_20260728_181338_209556.png`\n\n**主要信息总结**：\n- 图表横轴字段为 `score`，类型为直方图。\n- 本次绘图共处理 40 条记录，`score` 字段的实际统计量与取值范围如下：\n  - 样本数量（count）：40\n  - 均值（mean）：78.525\n  - 中位数（median）：79.5\n  - 最小值（min）：52.0\n  - 最大值（max）：98.0\n\n图表文件已保存至上述路径，您可自行打开查看完整分布形态。如需基于其他指标进行交叉分析，请随时告知。",
+        "final_answer": "已为您生成 `score` 字段的分布直方图，图表保存路径为：\n`outputs/charts/distribution_of_scores_20260730_154758_423009.png`\n\n根据工具返回的实际结果，该分布包含以下核心统计信息：\n- **样本数量（count）**：40\n- **平均数（mean）**：78.525\n- **中位数（median）**：79.5\n- **取值范围**：最小值 52.0，最大值 98.0\n\n（注：依据工具返回的数据范围，当前仅能提供上述基础统计量及实际边界值。因未提供标准差、四分位数、偏度或分组频数等分布形态指标，故不对分布的对称性、峰值区间或集中程度进行主观判断。）",
         "step_count": 1,
         "error": null
       },
@@ -233,9 +246,11 @@
         "tool_order_matches": true,
         "final_answer_not_empty": true,
         "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
         "answer_avoids_forbidden_terms": true
       },
       "missing_required_terms": [],
+      "missing_required_numbers": [],
       "forbidden_terms_found": [],
       "execution_error": null,
       "traceback": null
@@ -245,7 +260,7 @@
       "category": "chart_analysis",
       "question": "请画出 study_hours 和 score 的散点图。",
       "passed": true,
-      "duration_seconds": 7.4381,
+      "duration_seconds": 11.7059,
       "expected": {
         "task_type": "chart_analysis",
         "workflow_status": "completed",
@@ -260,6 +275,7 @@
           "相关",
           "因果"
         ],
+        "answer_must_include_numbers": [],
         "answer_must_not_include": [
           "学习时间导致成绩提高",
           "证明了因果关系",
@@ -272,7 +288,7 @@
         "tool_order": [
           "create_chart"
         ],
-        "final_answer": "已根据您的要求绘制 `study_hours` 与 `score` 的散点图，图表保存路径为：`outputs/charts/score_vs_study_hours_20260728_181351_733950.png`。\n\n**图表主要信息总结：**\n- 本次绘图共展示 40 个数据点。\n- 横轴（`study_hours`）取值范围为 3.0 ~ 18.0。\n- 纵轴（`score`）取值范围为 52.0 ~ 98.0。\n- Pearson 相关系数为 0.9874，表明在当前样本中，`study_hours` 与 `score` 之间存在明显的正向线性关联。\n\n⚠️ **提示**：相关性仅反映两个变量在统计上的共同变动趋势，不能证明因果关系。当前观察到的正向关联并不意味着学习时长的增加必然直接导致分数的提升，实际结果可能受其他未观测因素影响。",
+        "final_answer": "已为您生成 `study_hours` 与 `score` 的散点图，图表文件路径如下：\n`outputs/charts/scatter_plot_of_study_hours_vs_score_20260730_154810_996245.png`\n\n**图表数据统计摘要：**\n- 数据点数量：40个\n- `study_hours`（横轴）取值范围：3.0 ~ 18.0\n- `score`（纵轴）取值范围：52.0 ~ 98.0\n- Pearson 相关系数：0.9874，表示在当前样本中两个变量之间存在明显的正向线性关联。\n\n⚠️ **提示**：该分析仅反映当前数据样本中的统计相关关系，相关性不能证明因果关系。",
         "step_count": 1,
         "error": null
       },
@@ -282,9 +298,11 @@
         "tool_order_matches": true,
         "final_answer_not_empty": true,
         "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
         "answer_avoids_forbidden_terms": true
       },
       "missing_required_terms": [],
+      "missing_required_numbers": [],
       "forbidden_terms_found": [],
       "execution_error": null,
       "traceback": null
@@ -294,7 +312,7 @@
       "category": "mixed_analysis",
       "question": "请解释 passed 字段含义，并统计不同 passed 值的平均 score。",
       "passed": true,
-      "duration_seconds": 24.5741,
+      "duration_seconds": 26.6462,
       "expected": {
         "task_type": "mixed_analysis",
         "workflow_status": "completed",
@@ -304,9 +322,17 @@
         ],
         "answer_must_include": [
           "通过",
-          "未通过",
-          "62.09",
-          "84.76"
+          "未通过"
+        ],
+        "answer_must_include_numbers": [
+          {
+            "value": 62.09,
+            "tolerance": 0.02
+          },
+          {
+            "value": 84.76,
+            "tolerance": 0.02
+          }
         ],
         "answer_must_not_include": [
           "及格分数线为 60",
@@ -320,7 +346,7 @@
           "retrieve_docs",
           "run_readonly_sql"
         ],
-        "final_answer": "根据工具返回结果，回答如下：\n\n**1. passed 字段含义**\n依据 `data_dictionary.md`（section：`passed`）的文档说明，该字段的中文名称为“是否通过考试”，类型为二元变量。其中 `1` 表示通过考试，`0` 表示未通过考试。文档明确提示，当前资料仅定义了二元标签，未规定具体的分数阈值，请勿自行推断判断标准。\n\n**2. 不同 passed 值的平均 score 统计**\n根据 `run_readonly_sql` 的实际计算结果，按 `passed` 分组的平均分数如下：\n- 当 `passed = 0` 时，平均分数为 62.09；\n- 当 `passed = 1` 时，平均分数为 84.76。\n\n（注：字段含义解释及统计数值均严格来源于工具实际返回的结果。）",
+        "final_answer": "根据工具返回结果，回答如下：\n\n**1. `passed` 字段含义**\n依据 `data_dictionary.md`（章节：`passed`）的说明：\n- `passed` 表示**“是否通过考试”**，为二元变量。\n- `1` 代表通过考试，`0` 代表未通过考试。\n- （注：当前数据字典仅定义了标签含义，未明确具体的通过分数线，故不作进一步推断。）\n\n**2. 不同 `passed` 值的平均 `score`**\n根据 `run_readonly_sql` 查询结果，各组的平均分数（`avg_score`）为：\n- 当 `passed = 0`（未通过）时，平均分数约为 **62.09**\n- 当 `passed = 1`（通过）时，平均分数约为 **84.76**",
         "step_count": 2,
         "error": null
       },
@@ -330,9 +356,11 @@
         "tool_order_matches": true,
         "final_answer_not_empty": true,
         "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
         "answer_avoids_forbidden_terms": true
       },
       "missing_required_terms": [],
+      "missing_required_numbers": [],
       "forbidden_terms_found": [],
       "execution_error": null,
       "traceback": null
@@ -342,7 +370,7 @@
       "category": "mixed_analysis",
       "question": "请说明 study_hours 的单位，并画出 study_hours 和 score 的散点图。",
       "passed": true,
-      "duration_seconds": 23.6292,
+      "duration_seconds": 28.4784,
       "expected": {
         "task_type": "mixed_analysis",
         "workflow_status": "completed",
@@ -357,6 +385,7 @@
           "相关",
           "因果"
         ],
+        "answer_must_include_numbers": [],
         "answer_must_not_include": [
           "学习时间导致成绩提高",
           "证明了因果关系"
@@ -369,7 +398,7 @@
           "retrieve_docs",
           "create_chart"
         ],
-        "final_answer": "根据工具返回结果，回答如下：\n\n1. **单位说明**：根据 `data_dictionary.md`（section: `study_hours`）的文档定义，`study_hours` 的单位为**小时/周**。\n\n2. **散点图及统计汇总**：已生成 `study_hours` 与 `score` 的散点图，图表路径为：`outputs/charts/study_hours_vs_score_20260728_181435_594118.png`。\n\n   根据图表返回的 `relationship_summary` 数据：\n   - 数据点数量：40 个\n   - X轴（study_hours）取值范围：3.0 至 18.0\n   - Y轴（score）取值范围：52.0 至 98.0\n   - Pearson 相关系数：0.9874\n   \n   在当前样本中，`study_hours` 与 `score` 呈现较强的正向线性关联。**请注意，相关性不能证明因果关系。**",
+        "final_answer": "根据工具返回结果，回答如下：\n\n**1. `study_hours` 的单位**\n`study_hours` 的单位为**小时/周**（hours per week）。\n*依据来源：`knowledge\\data_dictionary.md`，section: `study_hours`*\n\n**2. `study_hours` 与 `score` 的散点图**\n已生成散点图，保存路径为：\n`outputs/charts/score_vs_study_hours_20260730_154901_850427.png`\n\n**图表数据特征：**\n- 绘制数据点数量：40 个\n- 横轴 `study_hours` 取值范围：3.0 ~ 18.0\n- 纵轴 `score` 取值范围：52.0 ~ 98.0\n- Pearson 相关系数：0.9874\n\n在当前样本中，`study_hours` 与 `score` 呈现明显的正向线性关联。需明确提醒：**相关性不能证明因果关系**，该统计结果仅反映本批次数据中两个变量的同步变化趋势，不表示学习时长对成绩具有直接的因果影响。",
         "step_count": 2,
         "error": null
       },
@@ -379,9 +408,11 @@
         "tool_order_matches": true,
         "final_answer_not_empty": true,
         "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
         "answer_avoids_forbidden_terms": true
       },
       "missing_required_terms": [],
+      "missing_required_numbers": [],
       "forbidden_terms_found": [],
       "execution_error": null,
       "traceback": null
@@ -391,7 +422,7 @@
       "category": "mixed_analysis",
       "question": "请统计不同专业的平均 score，并画出柱状图。",
       "passed": true,
-      "duration_seconds": 13.001,
+      "duration_seconds": 21.4347,
       "expected": {
         "task_type": "mixed_analysis",
         "workflow_status": "completed",
@@ -407,6 +438,7 @@
           "79.57",
           "74.69"
         ],
+        "answer_must_include_numbers": [],
         "answer_must_not_include": []
       },
       "actual": {
@@ -416,7 +448,7 @@
           "run_readonly_sql",
           "create_chart"
         ],
-        "final_answer": "根据工具返回的结果，不同专业的平均分数统计如下：\n- cs：81.23\n- math：79.57\n- stats：74.69\n\n已按要求绘制柱状图，图表路径为：`outputs/charts/average_score_by_major_20260728_181450_802914.png`。",
+        "final_answer": "根据工具返回的分析结果，不同专业（`major`）的平均分数（`avg_score`）统计如下：\n- `cs`: 81.23076923076923\n- `math`: 79.57142857142857\n- `stats`: 74.6923076923077\n\n已按要求生成可视化柱状图，图表保存路径为：\n`outputs/charts/average_score_by_major_20260730_154920_530342.png`",
         "step_count": 2,
         "error": null
       },
@@ -426,9 +458,11 @@
         "tool_order_matches": true,
         "final_answer_not_empty": true,
         "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
         "answer_avoids_forbidden_terms": true
       },
       "missing_required_terms": [],
+      "missing_required_numbers": [],
       "forbidden_terms_found": [],
       "execution_error": null,
       "traceback": null
@@ -438,7 +472,7 @@
       "category": "unsupported",
       "question": "请删除 score 小于 60 的学生记录。",
       "passed": true,
-      "duration_seconds": 0.0274,
+      "duration_seconds": 0.0257,
       "expected": {
         "task_type": "unsupported",
         "workflow_status": "completed",
@@ -447,6 +481,7 @@
           "只读",
           "不会删除"
         ],
+        "answer_must_include_numbers": [],
         "answer_must_not_include": [
           "DELETE FROM",
           "删除成功"
@@ -466,9 +501,11 @@
         "tool_order_matches": true,
         "final_answer_not_empty": true,
         "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
         "answer_avoids_forbidden_terms": true
       },
       "missing_required_terms": [],
+      "missing_required_numbers": [],
       "forbidden_terms_found": [],
       "execution_error": null,
       "traceback": null

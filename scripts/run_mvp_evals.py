@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from time import perf_counter
 from typing import Any
+import re
 
 
 # 确保直接运行 scripts/run_mvp_evals.py 时可以导入 src 下的项目包。
@@ -271,6 +272,10 @@ def run_eval_case(
         "answer_must_include",
         [],
     )
+    expected_numbers = case.get(
+        "answer_must_include_numbers",
+        [],
+    )
     forbidden_terms = case.get(
         "answer_must_not_include",
         [],
@@ -286,10 +291,65 @@ def run_eval_case(
             f"{case_id} 的 answer_must_include 必须是列表。"
         )
 
+    if not isinstance(expected_numbers, list):
+        raise ValueError(
+            f"{case_id} 的 "
+            "answer_must_include_numbers 必须是列表。"
+        )
+
     if not isinstance(forbidden_terms, list):
         raise ValueError(
-            f"{case_id} 的 answer_must_not_include 必须是列表。"
+            f"{case_id} 的 "
+            "answer_must_not_include 必须是列表。"
         )
+
+    # 检查数值期望配置是否合法
+    for index, expectation in enumerate(
+        expected_numbers
+    ):
+        if not isinstance(expectation, dict):
+            raise ValueError(
+                f"{case_id} 的 "
+                "answer_must_include_numbers"
+                f"[{index}] 必须是对象。"
+            )
+
+        if "value" not in expectation:
+            raise ValueError(
+                f"{case_id} 的 "
+                "answer_must_include_numbers"
+                f"[{index}] 缺少 value。"
+            )
+
+        try:
+            float(expectation["value"])
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"{case_id} 的 "
+                "answer_must_include_numbers"
+                f"[{index}].value 必须是数字。"
+            ) from exc
+
+        try:
+            tolerance = float(
+                expectation.get(
+                    "tolerance",
+                    0.01,
+                )
+            )
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"{case_id} 的 "
+                "answer_must_include_numbers"
+                f"[{index}].tolerance 必须是数字。"
+            ) from exc
+
+        if tolerance < 0:
+            raise ValueError(
+                f"{case_id} 的 "
+                "answer_must_include_numbers"
+                f"[{index}].tolerance 不能小于 0。"
+            )
 
     started_at = perf_counter()
 
@@ -322,6 +382,10 @@ def run_eval_case(
             final_answer,
             required_terms,
         )
+        missing_numbers = find_missing_numbers(
+            final_answer,
+            expected_numbers,
+        )
         forbidden_terms_found = find_forbidden_terms(
             final_answer,
             forbidden_terms,
@@ -346,6 +410,9 @@ def run_eval_case(
             "answer_contains_required_terms": (
                 len(missing_terms) == 0
             ),
+            "answer_contains_required_numbers": (
+                len(missing_numbers) == 0
+            ),
             "answer_avoids_forbidden_terms": (
                 len(forbidden_terms_found) == 0
             ),
@@ -368,6 +435,9 @@ def run_eval_case(
                 "answer_must_include": (
                     required_terms
                 ),
+                "answer_must_include_numbers": (
+                    expected_numbers
+                ),
                 "answer_must_not_include": (
                     forbidden_terms
                 ),
@@ -387,7 +457,12 @@ def run_eval_case(
                 ),
             },
             "checks": checks,
-            "missing_required_terms": missing_terms,
+            "missing_required_terms": (
+                missing_terms
+            ),
+            "missing_required_numbers": (
+                missing_numbers
+            ),
             "forbidden_terms_found": (
                 forbidden_terms_found
             ),
@@ -416,6 +491,9 @@ def run_eval_case(
                 "answer_must_include": (
                     required_terms
                 ),
+                "answer_must_include_numbers": (
+                    expected_numbers
+                ),
                 "answer_must_not_include": (
                     forbidden_terms
                 ),
@@ -434,13 +512,15 @@ def run_eval_case(
             "missing_required_terms": (
                 required_terms
             ),
+            "missing_required_numbers": (
+                expected_numbers
+            ),
             "forbidden_terms_found": [],
             "execution_error": (
                 f"{type(exc).__name__}: {exc}"
             ),
             "traceback": traceback.format_exc(),
         }
-
 
 def select_cases(
     cases: list[dict[str, Any]],
@@ -843,6 +923,63 @@ def main() -> int:
     )
 
     return 0 if failed_cases == 0 else 1
+
+
+def extract_numbers(text: str) -> list[float]:
+    """
+    从回答文本中提取整数和小数。
+    """
+
+    matches = re.findall(
+        r"[-+]?(?:\d+\.\d+|\d+)",
+        text,
+    )
+
+    numbers: list[float] = []
+
+    for match in matches:
+        try:
+            numbers.append(float(match))
+        except ValueError:
+            continue
+
+    return numbers
+
+
+def find_missing_numbers(
+    answer: str,
+    expected_numbers: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """
+    使用数值容差判断回答中是否包含预期数字。
+    """
+
+    actual_numbers = extract_numbers(answer)
+    missing_numbers: list[dict[str, Any]] = []
+
+    for expectation in expected_numbers:
+        expected_value = float(
+            expectation["value"]
+        )
+        tolerance = float(
+            expectation.get(
+                "tolerance",
+                0.01,
+            )
+        )
+
+        matched = any(
+            abs(actual - expected_value)
+            <= tolerance
+            for actual in actual_numbers
+        )
+
+        if not matched:
+            missing_numbers.append(
+                expectation
+            )
+
+    return missing_numbers
 
 
 if __name__ == "__main__":

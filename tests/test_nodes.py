@@ -570,3 +570,75 @@ def test_reporter_requires_scatter_relationship_summary(
     assert "relationship_summary" in system_prompt
     assert "Pearson 相关系数" in system_prompt
     assert "相关性不能证明因果关系" in system_prompt
+
+
+def test_reporter_appends_missing_scatter_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_response = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(
+                    content=(
+                        "散点图已生成，"
+                        "请查看图表路径。"
+                    ),
+                    tool_calls=None,
+                )
+            )
+        ]
+    )
+
+    def fake_create_chat_completion(
+        messages,
+        *,
+        tools=None,
+        tool_choice=None,
+    ):
+        return fake_response
+
+    monkeypatch.setattr(
+        "causalens.agent.nodes.create_chat_completion",
+        fake_create_chat_completion,
+    )
+
+    state: AgentState = {
+        "question": (
+            "请说明 study_hours 的单位，"
+            "并画出 study_hours 和 score 的散点图。"
+        ),
+        "task_type": "mixed_analysis",
+        "plan": ["检索单位", "生成散点图"],
+        "tool_results": [
+            {
+                "tool_name": "create_chart",
+                "success": True,
+                "result": {
+                    "chart_type": "scatter",
+                    "relationship_summary": {
+                        "point_count": 40,
+                        "x_min": 3.0,
+                        "x_max": 18.0,
+                        "y_min": 52.0,
+                        "y_max": 98.0,
+                        "pearson_correlation": 0.9874,
+                    },
+                    "chart_path": (
+                        "outputs/charts/scatter.png"
+                    ),
+                },
+                "error": None,
+            }
+        ],
+        "error": None,
+    }
+
+    result = reporter_node(state)
+    answer = result["final_answer"]
+
+    assert "40 个数据点" in answer
+    assert "0.9874" in answer
+    assert "相关" in answer
+    assert "因果" in answer
+    assert "3.0 至 18.0" in answer
+    assert "52.0 至 98.0" in answer
