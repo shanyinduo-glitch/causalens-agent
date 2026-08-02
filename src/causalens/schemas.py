@@ -143,3 +143,18 @@ if __name__ == "__main__":
     )
 
     print(response.model_dump())
+
+class StatisticalResult(BaseModel):
+    """统计分析工具的统一结果结构。"""
+
+    analysis_type: str
+    variables: list[str]
+    sample_size: int
+
+    estimate: float | None = None
+    statistic: float | None = None
+    p_value: float | None = None
+    confidence_interval: list[float] | None = None
+
+    details: dict[str, Any] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
