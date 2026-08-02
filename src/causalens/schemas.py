@@ -197,3 +197,31 @@ class RegressionResult(BaseModel):
     warnings: list[str] = Field(
         default_factory=list
     )
+
+class CausalReadinessResult(BaseModel):
+    """因果分析前提检查的结构化结果。"""
+
+    analysis_type: str = "causal_readiness"
+
+    ready: bool
+
+    treatment: str
+    outcome: str
+    confounders: list[str]
+
+    blocking_issues: list[str] = Field(
+        default_factory=list
+    )
+    warnings: list[str] = Field(
+        default_factory=list
+    )
+
+    sample_summary: dict[str, Any] = Field(
+        default_factory=dict
+    )
+    variable_summary: dict[str, Any] = Field(
+        default_factory=dict
+    )
+    thresholds: dict[str, Any] = Field(
+        default_factory=dict
+    )
