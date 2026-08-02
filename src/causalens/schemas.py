@@ -158,3 +158,42 @@ class StatisticalResult(BaseModel):
 
     details: dict[str, Any] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
+
+class RegressionCoefficient(BaseModel):
+    """单个回归项的估计结果。"""
+
+    term: str
+    estimate: float
+
+    standard_error: float
+    robust_standard_error: float
+
+    p_value: float
+    confidence_interval: list[float]
+
+
+class RegressionResult(BaseModel):
+    """OLS 回归工具的统一结果结构。"""
+
+    analysis_type: str = "ols"
+
+    outcome: str
+    predictors: list[str]
+    categorical_columns: list[str]
+
+    sample_size: int
+    dropped_rows: int
+
+    covariance_type: str
+
+    coefficients: list[RegressionCoefficient]
+
+    r_squared: float
+    adjusted_r_squared: float
+
+    diagnostics: dict[str, Any] = Field(
+        default_factory=dict
+    )
+    warnings: list[str] = Field(
+        default_factory=list
+    )
