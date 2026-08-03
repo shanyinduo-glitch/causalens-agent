@@ -36,7 +36,7 @@ if __name__ == "__main__":
         outcome="retention_score",
         confounders=[
             "age",
-            "income",
+            "log_income",
             "historical_activity",
             "channel_score",
         ],

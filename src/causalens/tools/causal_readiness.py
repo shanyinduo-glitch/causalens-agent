@@ -496,11 +496,11 @@ def check_causal_readiness(
                     "overlap may be weak."
                 )
 
+
         elif len(treatment_values) == 2:
             minimum_group_count = int(
                 treatment_counts_series.min()
             )
-
             if minimum_group_count < min_group_size:
                 blocking_issues.append(
                     "At least one treatment group "
@@ -509,11 +509,10 @@ def check_causal_readiness(
                     f"{min_group_size}; smallest "
                     f"group: {minimum_group_count}."
                 )
-
-            warnings.append(
-                "The binary treatment is not coded "
-                "as 0 and 1. A deterministic coding "
-                "step will be required before DML."
+            blocking_issues.append(
+                "Treatment must be coded as 0 and 1 "
+                "for the current Week 6 DML workflow. "
+                f"Observed values: {treatment_values}"
             )
 
         # -------------------------------------------------

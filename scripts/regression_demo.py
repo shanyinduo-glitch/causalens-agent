@@ -74,7 +74,7 @@ if __name__ == "__main__":
         predictors=[
             "ad_exposure",
             "age",
-            "income",
+            "log_income",
             "historical_activity",
             "channel_score",
         ],

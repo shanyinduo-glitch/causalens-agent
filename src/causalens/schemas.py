@@ -225,3 +225,35 @@ class CausalReadinessResult(BaseModel):
     thresholds: dict[str, Any] = Field(
         default_factory=dict
     )
+
+class DMLResult(BaseModel):
+    """LinearDML 因果探索的结构化结果。"""
+
+    analysis_type: str = "linear_dml"
+
+    treatment: str
+    outcome: str
+    confounders: list[str]
+
+    sample_size: int
+    discrete_treatment: bool
+
+    ate: float
+    confidence_interval: list[float]
+    confidence_level: float = 0.95
+
+    naive_group_difference: float | None = None
+
+    model_configuration: dict[str, Any] = Field(
+        default_factory=dict
+    )
+    readiness_summary: dict[str, Any] = Field(
+        default_factory=dict
+    )
+
+    assumptions: list[str] = Field(
+        default_factory=list
+    )
+    warnings: list[str] = Field(
+        default_factory=list
+    )

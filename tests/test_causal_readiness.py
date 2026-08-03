@@ -370,3 +370,46 @@ def test_continuous_treatment_is_blocked(
             ]
         )
     )
+
+def test_non_zero_one_treatment_is_blocked(
+    tmp_path,
+):
+    dataframe = build_valid_causal_data()
+
+    dataframe["treatment"] = (
+        dataframe["treatment"]
+        .map(
+            {
+                0: 1,
+                1: 2,
+            }
+        )
+    )
+
+    dataset_path = save_test_data(
+        tmp_path,
+        dataframe,
+    )
+
+    response = check_causal_readiness(
+        dataset_path=dataset_path,
+        treatment="treatment",
+        outcome="outcome",
+        confounders=[
+            "age",
+            "activity",
+        ],
+    )
+
+    assert response["success"] is True
+    assert response["result"]["ready"] is False
+
+    blocking_text = " ".join(
+        response["result"][
+            "blocking_issues"
+        ]
+    )
+
+    assert "coded as 0 and 1" in (
+        blocking_text
+    )
