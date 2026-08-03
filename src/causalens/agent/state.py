@@ -6,9 +6,11 @@ from typing import Annotated, Any, Literal, TypedDict
 
 TaskType = Literal[
     "data_profile",
+    "rag_question",
     "sql_analysis",
     "chart_analysis",
-    "rag_question",
+    "statistical_analysis",
+    "causal_analysis",
     "mixed_analysis",
     "unsupported",
 ]
@@ -119,6 +121,17 @@ class AgentState(TypedDict, total=False):
     # 没有错误时为 None。
     error: str | None
 
+    analysis_method: str | None
+
+    treatment: str | None
+    outcome: str | None
+    confounders: list[str]
+
+    causal_readiness: dict[str, Any]
+
+    requires_approval: bool
+    approved: bool | None
+
 
 def create_initial_state(
     dataset_path: str,
@@ -151,4 +164,11 @@ def create_initial_state(
         "result_check_reason": "",
         "final_answer": "",
         "error": None,
+        "analysis_method": None,
+        "treatment": None,
+        "outcome": None,
+        "confounders": [],
+        "causal_readiness": {},
+        "requires_approval": False,
+        "approved": None,
     }

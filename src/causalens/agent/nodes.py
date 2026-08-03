@@ -12,7 +12,7 @@ from causalens.agent.state import AgentState, TaskType
 from causalens.agent.tool_registry import TOOL_REGISTRY, TOOLS
 from causalens.observability import append_tool_call_log
 from causalens.schemas import ToolCall, ToolResult
-
+from pydantic import BaseModel
 
 DESTRUCTIVE_KEYWORDS = [
     "删除",
@@ -82,6 +82,34 @@ CHART_INTENT_KEYWORDS = [
     "可视化",
 ]
 
+CORRELATION_INTENT_KEYWORDS = (
+    "相关",
+    "相关性",
+    "相关系数",
+    "pearson",
+    "spearman",
+)
+
+GROUP_COMPARISON_INTENT_KEYWORDS = (
+    "显著差异",
+    "是否有差异",
+    "组间差异",
+    "均值差异",
+    "t 检验",
+    "t检验",
+    "t-test",
+    "anova",
+    "方差分析",
+)
+
+OLS_INTENT_KEYWORDS = (
+    "控制",
+    "回归",
+    "ols",
+    "调整后",
+    "校正后",
+    "保持其他变量不变",
+)
 
 def _contains_any(
     text: str,
@@ -93,18 +121,29 @@ def _contains_any(
 
     return any(keyword in text for keyword in keywords)
 
-def intent_router_node(state: AgentState) -> AgentState:
+def intent_router_node(
+    state: AgentState,
+) -> AgentState:
     """
     判断用户问题属于哪一种任务。
 
-    当前使用通用意图规则完成第一层确定性路由。
-    不对 major、score、passed 等具体字段进行硬编码。
+    路由优先级：
+    1. 破坏性请求
+    2. 明确统计分析
+    3. 原有文档、概览、SQL、图表和混合任务
     """
+    question = str(
+        state.get("question") or ""
+    ).strip().lower()
 
-    question = state.get("question", "").strip().lower()
-
-    print("\n[intent_router_node] 开始判断任务类型")
-    print(f"[intent_router_node] 用户问题：{question}")
+    print(
+        "\n[intent_router_node] "
+        "开始判断任务类型"
+    )
+    print(
+        f"[intent_router_node] "
+        f"用户问题：{question}"
+    )
 
     has_doc_intent = _contains_any(
         question,
@@ -123,6 +162,12 @@ def intent_router_node(state: AgentState) -> AgentState:
         CHART_INTENT_KEYWORDS,
     )
 
+    statistical_tool_name = (
+        _infer_statistical_tool_name(
+            question
+        )
+    )
+
     intent_count = sum(
         [
             has_doc_intent,
@@ -133,9 +178,25 @@ def intent_router_node(state: AgentState) -> AgentState:
     )
 
     task_type: TaskType
+    analysis_method: str | None = None
 
-    if _contains_any(question, DESTRUCTIVE_KEYWORDS):
+    # 破坏性请求永远最高优先级。
+    if _contains_any(
+        question,
+        DESTRUCTIVE_KEYWORDS,
+    ):
         task_type = "unsupported"
+
+    # 统计问题优先于普通 SQL。
+    #
+    # 例如“不同专业的平均 score 是否存在显著差异”
+    # 可能同时命中 SQL 关键词“平均”，但真正需要的是
+    # ANOVA，而不是只计算分组均值。
+    elif statistical_tool_name is not None:
+        task_type = "statistical_analysis"
+        analysis_method = (
+            statistical_tool_name
+        )
 
     elif intent_count >= 2:
         task_type = "mixed_analysis"
@@ -155,22 +216,74 @@ def intent_router_node(state: AgentState) -> AgentState:
     else:
         task_type = "unsupported"
 
-    print(f"[intent_router_node] 任务类型：{task_type}")
+    print(
+        f"[intent_router_node] "
+        f"任务类型：{task_type}"
+    )
+    print(
+        f"[intent_router_node] "
+        f"分析方法：{analysis_method}"
+    )
 
     return {
         "task_type": task_type,
+        "analysis_method": analysis_method,
         "workflow_status": "planning",
     }
-
 
 SINGLE_TOOL_BY_TASK_TYPE: dict[TaskType, str | None] = {
     "data_profile": "profile_dataset",
     "sql_analysis": "run_readonly_sql",
     "chart_analysis": "create_chart",
     "rag_question": "retrieve_docs",
+
+    # statistical_analysis 下有三个候选工具，
+    # 不能在这里固定成某一个工具。
+    "statistical_analysis": None,
+
+    # 因果分析后面必须走 readiness 和人工确认，
+    # 暂时不能直接映射为 run_dml。
+    "causal_analysis": None,
+
     "mixed_analysis": None,
     "unsupported": None,
 }
+
+def _infer_statistical_tool_name(
+    question: str,
+) -> str | None:
+    """
+    根据统计问题识别本轮应使用的具体统计工具。
+
+    判断顺序：
+    1. OLS
+    2. 组间比较
+    3. 相关分析
+
+    OLS 必须优先判断，因为问题中可能同时出现
+    “控制……后”和“关系”。
+    """
+    normalized_question = question.strip().lower()
+
+    if any(
+        keyword in normalized_question
+        for keyword in OLS_INTENT_KEYWORDS
+    ):
+        return "run_ols"
+
+    if any(
+        keyword in normalized_question
+        for keyword in GROUP_COMPARISON_INTENT_KEYWORDS
+    ):
+        return "run_group_comparison"
+
+    if any(
+        keyword in normalized_question
+        for keyword in CORRELATION_INTENT_KEYWORDS
+    ):
+        return "run_correlation"
+
+    return None
 
 
 def _infer_required_tool_names(
@@ -193,6 +306,25 @@ def _infer_required_tool_names(
 
     if single_tool is not None:
         return [single_tool]
+
+    if task_type == "statistical_analysis":
+        statistical_tool_name = (
+            _infer_statistical_tool_name(
+                question
+            )
+        )
+
+        if statistical_tool_name is None:
+            return []
+
+        return [
+            statistical_tool_name
+        ]
+
+    if task_type == "causal_analysis":
+        # Day 41-C 再接 readiness、人工确认和 run_dml。
+        # 当前禁止将因果任务直接转换成工具调用。
+        return []
 
     if task_type != "mixed_analysis":
         return []
@@ -331,6 +463,70 @@ def _get_tool_guidance(
             "7. 上一条 SQL 返回的列名和别名只能作为报告依据，"
             "不能直接作为 create_chart 的原始 CSV 字段参数。\n"
             "8. 不要编造用户未提供、且没有证据确认的字段。"
+        ),
+        "run_correlation": (
+            "本轮调用 run_correlation。\n\n"
+            "参数生成规则：\n"
+            "1. x_column 和 y_column 必须是原始 CSV 中"
+            "真实存在的两个数值字段。\n"
+            "2. 不要生成 dataset_path，数据集路径会由"
+            "工作流自动注入。\n"
+            "3. 用户明确要求 Pearson 时，method 使用"
+            " pearson。\n"
+            "4. 用户明确要求 Spearman 时，method 使用"
+            " spearman。\n"
+            "5. 用户只说“相关”或“相关性”而未指定方法时，"
+            "默认使用 pearson。\n"
+            "6. 不得把分类字段作为相关分析变量。\n"
+            "7. 不得虚构 CSV 中不存在的字段。\n\n"
+            "正确参数示例：\n"
+            '{"x_column": "study_hours", '
+            '"y_column": "score", '
+            '"method": "pearson"}'
+        ),
+        "run_group_comparison": (
+            "本轮调用 run_group_comparison。\n\n"
+            "参数生成规则：\n"
+            "1. group_column 是定义不同组别的字段，"
+            "例如 major、passed 或 treatment。\n"
+            "2. value_column 是需要在不同组之间比较的"
+            "数值字段，例如 score。\n"
+            "3. 不要生成 dataset_path，数据集路径会由"
+            "工作流自动注入。\n"
+            "4. 不要自行指定 t 检验或 ANOVA。\n"
+            "5. Python 工具会根据有效组别数量自动选择："
+            "两组使用 Welch t 检验，三组及以上使用"
+            "单因素方差分析。\n"
+            "6. group_column 和 value_column 不能相同。\n"
+            "7. 不得虚构 CSV 中不存在的字段。\n\n"
+            "正确参数示例：\n"
+            '{"group_column": "major", '
+            '"value_column": "score"}'
+        ),
+        "run_ols": (
+            "本轮调用 run_ols。\n\n"
+            "参数生成规则：\n"
+            "1. outcome 是需要解释或预测的数值因变量。\n"
+            "2. predictors 包含主要自变量和用户要求控制的"
+            "其他变量。\n"
+            "3. 用户说“控制 A 后，分析 B 与 Y 的关系”时，"
+            "outcome 应为 Y，predictors 应同时包含 B 和 A。\n"
+            "4. categorical_columns 只包含 predictors 中"
+            "需要按分类变量处理的字段。\n"
+            "5. 数值字段不要放入 categorical_columns，"
+            "除非用户明确要求把它当作分类变量。\n"
+            "6. 默认 robust_covariance 使用 HC3。\n"
+            "7. 不要生成 dataset_path，数据集路径会由"
+            "工作流自动注入。\n"
+            "8. outcome 不能同时出现在 predictors 中。\n"
+            "9. predictors 中不得包含重复字段。\n"
+            "10. 不得虚构 CSV 中不存在的字段。\n\n"
+            "正确参数示例：\n"
+            '{"outcome": "score", '
+            '"predictors": ['
+            '"study_hours", "attendance_rate"], '
+            '"categorical_columns": [], '
+            '"robust_covariance": "HC3"}'
         ),
     }
 
@@ -725,6 +921,446 @@ def _validate_chart_tool_call(
 
     return errors
 
+def _validate_correlation_tool_call(
+    arguments: dict[str, Any],
+) -> list[str]:
+    """
+    检查相关分析参数是否合法。
+    """
+
+    errors: list[str] = []
+
+    dataset_path = arguments.get(
+        "dataset_path"
+    )
+    x_column = arguments.get("x_column")
+    y_column = arguments.get("y_column")
+    method = arguments.get(
+        "method",
+        "pearson",
+    )
+
+    if (
+        not isinstance(dataset_path, str)
+        or not dataset_path.strip()
+    ):
+        return [
+            "run_correlation 缺少 dataset_path。"
+        ]
+
+    if (
+        not isinstance(x_column, str)
+        or not x_column.strip()
+    ):
+        errors.append(
+            "run_correlation 的 x_column "
+            "必须是非空字符串。"
+        )
+
+    if (
+        not isinstance(y_column, str)
+        or not y_column.strip()
+    ):
+        errors.append(
+            "run_correlation 的 y_column "
+            "必须是非空字符串。"
+        )
+
+    if errors:
+        return errors
+
+    if x_column == y_column:
+        errors.append(
+            "相关分析的 x_column 和 y_column "
+            "不能是同一个字段。"
+        )
+
+    if (
+        not isinstance(method, str)
+        or method.strip().lower()
+        not in {
+            "pearson",
+            "spearman",
+        }
+    ):
+        errors.append(
+            "run_correlation 的 method "
+            "只能是 pearson 或 spearman。"
+        )
+
+    try:
+        dataframe = pd.read_csv(
+            dataset_path,
+            usecols=[
+                x_column,
+                y_column,
+            ],
+        )
+
+    except ValueError:
+        try:
+            dataframe_header = pd.read_csv(
+                dataset_path,
+                nrows=0,
+            )
+            available_columns = sorted(
+                dataframe_header.columns.tolist()
+            )
+
+        except Exception as exc:
+            return [
+                f"无法读取数据集字段：{exc}"
+            ]
+
+        errors.append(
+            "相关分析字段不存在于原始 CSV。"
+            f"x_column={x_column!r}，"
+            f"y_column={y_column!r}。"
+            f"可用字段：{available_columns}"
+        )
+        return errors
+
+    except Exception as exc:
+        return [
+            f"无法读取相关分析数据：{exc}"
+        ]
+
+    for column_name in [
+        x_column,
+        y_column,
+    ]:
+        if not pd.api.types.is_numeric_dtype(
+            dataframe[column_name]
+        ):
+            errors.append(
+                f"相关分析字段 {column_name!r} "
+                "必须是数值字段。"
+            )
+
+    return errors
+
+
+def _validate_group_comparison_tool_call(
+    arguments: dict[str, Any],
+) -> list[str]:
+    """
+    检查组间比较参数是否合法。
+    """
+
+    errors: list[str] = []
+
+    dataset_path = arguments.get(
+        "dataset_path"
+    )
+    group_column = arguments.get(
+        "group_column"
+    )
+    value_column = arguments.get(
+        "value_column"
+    )
+
+    if (
+        not isinstance(dataset_path, str)
+        or not dataset_path.strip()
+    ):
+        return [
+            "run_group_comparison "
+            "缺少 dataset_path。"
+        ]
+
+    if (
+        not isinstance(group_column, str)
+        or not group_column.strip()
+    ):
+        errors.append(
+            "run_group_comparison 的 "
+            "group_column 必须是非空字符串。"
+        )
+
+    if (
+        not isinstance(value_column, str)
+        or not value_column.strip()
+    ):
+        errors.append(
+            "run_group_comparison 的 "
+            "value_column 必须是非空字符串。"
+        )
+
+    if errors:
+        return errors
+
+    if group_column == value_column:
+        errors.append(
+            "group_column 和 value_column "
+            "不能是同一个字段。"
+        )
+
+    try:
+        dataframe = pd.read_csv(
+            dataset_path,
+            usecols=[
+                group_column,
+                value_column,
+            ],
+        )
+
+    except ValueError:
+        try:
+            dataframe_header = pd.read_csv(
+                dataset_path,
+                nrows=0,
+            )
+            available_columns = sorted(
+                dataframe_header.columns.tolist()
+            )
+
+        except Exception as exc:
+            return [
+                f"无法读取数据集字段：{exc}"
+            ]
+
+        errors.append(
+            "组间比较字段不存在于原始 CSV。"
+            f"group_column={group_column!r}，"
+            f"value_column={value_column!r}。"
+            f"可用字段：{available_columns}"
+        )
+        return errors
+
+    except Exception as exc:
+        return [
+            f"无法读取组间比较数据：{exc}"
+        ]
+
+    if not pd.api.types.is_numeric_dtype(
+        dataframe[value_column]
+    ):
+        errors.append(
+            f"value_column={value_column!r} "
+            "必须是数值字段。"
+        )
+
+    valid_group_count = (
+        dataframe[group_column]
+        .dropna()
+        .nunique()
+    )
+
+    if valid_group_count < 2:
+        errors.append(
+            "group_column 至少需要包含 "
+            "两个有效组别。"
+        )
+
+    return errors
+
+
+def _validate_ols_tool_call(
+    arguments: dict[str, Any],
+) -> list[str]:
+    """
+    检查 OLS 回归参数是否合法。
+    """
+
+    errors: list[str] = []
+
+    dataset_path = arguments.get(
+        "dataset_path"
+    )
+    outcome = arguments.get("outcome")
+    predictors = arguments.get(
+        "predictors"
+    )
+    categorical_columns = arguments.get(
+        "categorical_columns",
+        [],
+    )
+    robust_covariance = arguments.get(
+        "robust_covariance",
+        "HC3",
+    )
+
+    if (
+        not isinstance(dataset_path, str)
+        or not dataset_path.strip()
+    ):
+        return [
+            "run_ols 缺少 dataset_path。"
+        ]
+
+    if (
+        not isinstance(outcome, str)
+        or not outcome.strip()
+    ):
+        errors.append(
+            "run_ols 的 outcome "
+            "必须是非空字符串。"
+        )
+
+    if (
+        not isinstance(predictors, list)
+        or not predictors
+    ):
+        errors.append(
+            "run_ols 的 predictors "
+            "必须是非空列表。"
+        )
+
+    elif not all(
+        isinstance(column, str)
+        and column.strip()
+        for column in predictors
+    ):
+        errors.append(
+            "predictors 中的每个字段名 "
+            "都必须是非空字符串。"
+        )
+
+    if not isinstance(
+        categorical_columns,
+        list,
+    ):
+        errors.append(
+            "categorical_columns 必须是列表。"
+        )
+
+    elif not all(
+        isinstance(column, str)
+        and column.strip()
+        for column in categorical_columns
+    ):
+        errors.append(
+            "categorical_columns 中的每个字段名 "
+            "都必须是非空字符串。"
+        )
+
+    if errors:
+        return errors
+
+    if outcome in predictors:
+        errors.append(
+            "outcome 不能同时出现在 "
+            "predictors 中。"
+        )
+
+    if len(predictors) != len(
+        set(predictors)
+    ):
+        errors.append(
+            "predictors 中不能包含重复字段。"
+        )
+
+    if len(categorical_columns) != len(
+        set(categorical_columns)
+    ):
+        errors.append(
+            "categorical_columns 中不能包含"
+            "重复字段。"
+        )
+
+    unknown_categorical_columns = (
+        set(categorical_columns)
+        - set(predictors)
+    )
+
+    if unknown_categorical_columns:
+        errors.append(
+            "categorical_columns 必须是 "
+            "predictors 的子集。"
+            "以下字段不在 predictors 中："
+            f"{sorted(unknown_categorical_columns)}"
+        )
+
+    if (
+        not isinstance(
+            robust_covariance,
+            str,
+        )
+        or robust_covariance.upper()
+        not in {
+            "HC0",
+            "HC1",
+            "HC2",
+            "HC3",
+        }
+    ):
+        errors.append(
+            "robust_covariance 只能是 "
+            "HC0、HC1、HC2 或 HC3。"
+        )
+
+    selected_columns = [
+        outcome,
+        *predictors,
+    ]
+
+    try:
+        dataframe = pd.read_csv(
+            dataset_path,
+            usecols=selected_columns,
+        )
+
+    except ValueError:
+        try:
+            dataframe_header = pd.read_csv(
+                dataset_path,
+                nrows=0,
+            )
+            available_columns = set(
+                dataframe_header.columns.tolist()
+            )
+
+        except Exception as exc:
+            return [
+                f"无法读取数据集字段：{exc}"
+            ]
+
+        missing_columns = sorted(
+            set(selected_columns)
+            - available_columns
+        )
+
+        errors.append(
+            "OLS 参数包含原始 CSV 中不存在的字段："
+            f"{missing_columns}。"
+            "可用字段："
+            f"{sorted(available_columns)}"
+        )
+        return errors
+
+    except Exception as exc:
+        return [
+            f"无法读取 OLS 数据：{exc}"
+        ]
+
+    if not pd.api.types.is_numeric_dtype(
+        dataframe[outcome]
+    ):
+        errors.append(
+            f"OLS 因变量 outcome={outcome!r} "
+            "必须是数值字段。"
+        )
+
+    categorical_column_set = set(
+        categorical_columns
+    )
+
+    for predictor in predictors:
+        if predictor in categorical_column_set:
+            continue
+
+        if not pd.api.types.is_numeric_dtype(
+            dataframe[predictor]
+        ):
+            errors.append(
+                f"predictor={predictor!r} "
+                "不是数值字段；如果它是分类变量，"
+                "必须将其加入 "
+                "categorical_columns。"
+            )
+
+    return errors
+
 
 def _validate_pending_tool_call(
     state: AgentState,
@@ -760,6 +1396,23 @@ def _validate_pending_tool_call(
     if tool_name == "create_chart":
         return _validate_chart_tool_call(
             question=question,
+            arguments=arguments,
+        )
+
+    if tool_name == "run_correlation":
+        return _validate_correlation_tool_call(
+            arguments=arguments,
+        )
+
+    if tool_name == "run_group_comparison":
+        return (
+            _validate_group_comparison_tool_call(
+                arguments=arguments,
+            )
+        )
+
+    if tool_name == "run_ols":
+        return _validate_ols_tool_call(
             arguments=arguments,
         )
 
@@ -850,10 +1503,42 @@ def planner_node(state: AgentState) -> AgentState:
     当前先使用确定性模板，暂时不调用大模型。
     """
 
-    task_type = state.get("task_type", "unsupported")
+    task_type = state.get(
+        "task_type",
+        "unsupported")
+    analysis_method = state.get(
+        "analysis_method"
+    )
 
     print("\n[planner_node] 开始生成分析计划")
     print(f"[planner_node] 当前任务类型：{task_type}")
+
+    statistical_plan_by_method: dict[
+        str,
+        list[str],
+    ] = {
+        "run_correlation": [
+            "识别需要分析的两个数值变量",
+            "确定使用 Pearson 或 Spearman 相关分析",
+            "计算相关系数和显著性水平",
+            "解释相关方向、强度和统计显著性",
+            "明确说明相关关系不等于因果关系",
+        ],
+        "run_group_comparison": [
+            "识别分组变量和需要比较的数值变量",
+            "检查分组数量和各组有效样本",
+            "两组时执行 Welch t 检验，三组及以上执行单因素方差分析",
+            "比较各组描述统计量和显著性检验结果",
+            "说明组间差异不自动代表因果效应",
+        ],
+        "run_ols": [
+            "识别因变量、自变量和需要控制的变量",
+            "区分数值变量和分类变量",
+            "使用稳健标准误执行 OLS 回归",
+            "检查回归系数、置信区间、显著性和模型拟合情况",
+            "将回归结果解释为条件关联，而不是自动解释为因果效应",
+        ],
+    }
 
     plan_by_task_type: dict[TaskType, list[str]] = {
         "data_profile": [
@@ -890,9 +1575,30 @@ def planner_node(state: AgentState) -> AgentState:
             "说明不能执行的原因",
             "提供当前支持的只读分析方式",
         ],
+        "causal_analysis": [
+            "识别处理变量、结果变量和混杂变量",
+            "执行因果分析准备度检查",
+            "展示分析方法、变量配置、主要假设和风险",
+            "等待用户明确确认是否继续",
+            "确认后执行因果效应估计并报告结果",
+        ],
     }
 
-    plan = plan_by_task_type[task_type]
+    if task_type == "statistical_analysis":
+        plan = statistical_plan_by_method.get(
+            str(analysis_method),
+            [
+                "识别用户需要的统计分析方法",
+                "确认分析变量和参数",
+                "执行适当的统计工具",
+                "解释统计结果及其适用范围",
+            ],
+        )
+    else:
+        plan = plan_by_task_type.get(
+            task_type,
+            plan_by_task_type["unsupported"],
+        )
 
     for index, step in enumerate(plan, start=1):
         print(f"[planner_node] {index}. {step}")
@@ -1121,6 +1827,9 @@ def tool_decision_node(state: AgentState) -> AgentState:
         "profile_dataset",
         "run_readonly_sql",
         "create_chart",
+        "run_correlation",
+        "run_group_comparison",
+        "run_ols",
     }:
         arguments["dataset_path"] = dataset_path
 
@@ -1271,6 +1980,133 @@ def tool_validator_node(
     }
 
 
+def _normalize_tool_result(
+    tool_name: str,
+    raw_result: Any,
+) -> ToolResult:
+    """
+    将领域工具返回的不同结果格式，
+    统一转换为 LangGraph 使用的 ToolResult。
+
+    当前支持：
+    1. ToolResult
+    2. Pydantic BaseModel
+    3. dict
+    """
+
+    if isinstance(raw_result, ToolResult):
+        return raw_result
+
+    if isinstance(raw_result, BaseModel):
+        payload = raw_result.model_dump(
+            mode="json"
+        )
+
+    elif isinstance(raw_result, dict):
+        payload = dict(raw_result)
+
+    else:
+        return ToolResult(
+            tool_name=tool_name,
+            success=False,
+            error=(
+                f"工具 {tool_name} 返回了不支持的类型："
+                f"{type(raw_result).__name__}。"
+            ),
+        )
+
+    success = payload.get("success")
+
+    if not isinstance(success, bool):
+        return ToolResult(
+            tool_name=tool_name,
+            success=False,
+            error=(
+                f"工具 {tool_name} 返回结果中"
+                "缺少布尔型 success 字段。"
+            ),
+        )
+
+    raw_error = payload.get("error")
+
+    # 兼容标准 ToolResult 风格：
+    #
+    # {
+    #     "success": True,
+    #     "result": {...},
+    #     "error": None,
+    # }
+    #
+    # 也兼容领域结果直接展开的风格：
+    #
+    # {
+    #     "success": True,
+    #     "analysis_type": "correlation",
+    #     ...
+    # }
+    if "result" in payload:
+        result_payload = payload.get("result")
+    else:
+        result_payload = {
+            key: value
+            for key, value in payload.items()
+            if key not in {
+                "success",
+                "error",
+            }
+        }
+
+        if not result_payload:
+            result_payload = None
+
+    if isinstance(result_payload, BaseModel):
+        result_payload = (
+            result_payload.model_dump(
+                mode="json"
+            )
+        )
+
+    if (
+        result_payload is not None
+        and not isinstance(
+            result_payload,
+            dict,
+        )
+    ):
+        return ToolResult(
+            tool_name=tool_name,
+            success=False,
+            error=(
+                f"工具 {tool_name} 返回的 result "
+                "必须是字典或 None。"
+            ),
+        )
+
+    error: str | None = None
+
+    if not success:
+        if (
+            isinstance(raw_error, str)
+            and raw_error.strip()
+        ):
+            error = raw_error
+
+        elif raw_error is not None:
+            error = str(raw_error)
+
+        else:
+            error = (
+                f"工具 {tool_name} 执行失败，"
+                "但没有提供错误信息。"
+            )
+
+    return ToolResult(
+        tool_name=tool_name,
+        success=success,
+        result=result_payload,
+        error=error,
+    )
+
 def tool_executor_node(state: AgentState) -> AgentState:
     """
     执行 pending_tool_call 中记录的工具。
@@ -1326,10 +2162,12 @@ def tool_executor_node(state: AgentState) -> AgentState:
     tool_started_at = perf_counter()
 
     try:
-        tool_result = tool_function(**arguments)
+        raw_tool_result = tool_function(
+            **arguments
+        )
 
     except Exception as exc:
-        tool_result = ToolResult(
+        raw_tool_result = ToolResult(
             tool_name=tool_name,
             success=False,
             error=f"工具执行异常：{exc}",
@@ -1340,15 +2178,11 @@ def tool_executor_node(state: AgentState) -> AgentState:
     ) * 1000
 
     # 所有工具都必须返回统一的 ToolResult。
-    if not isinstance(tool_result, ToolResult):
-        tool_result = ToolResult(
-            tool_name=tool_name,
-            success=False,
-            error=(
-                "工具没有返回 ToolResult，"
-                "违反了项目统一工具返回规范。"
-            ),
-        )
+    # 在 LangGraph 执行边界统一转换为 ToolResult。
+    tool_result = _normalize_tool_result(
+        tool_name=tool_name,
+        raw_result=raw_tool_result,
+    )
 
     append_tool_call_log(
         question=question,

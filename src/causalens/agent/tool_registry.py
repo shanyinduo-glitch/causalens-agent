@@ -2,13 +2,20 @@ from causalens.tools.data_profile import profile_dataset
 from causalens.tools.sql_tool import run_readonly_sql
 from causalens.tools.chart_tool import create_chart
 from causalens.rag.rag_tool import retrieve_docs
-
+from causalens.tools.statistical_tool import (
+    run_correlation,
+    run_group_comparison,
+)
+from causalens.tools.regression_tool import run_ols
 
 TOOL_REGISTRY = {
     "profile_dataset": profile_dataset,
     "run_readonly_sql": run_readonly_sql,
     "create_chart": create_chart,
     "retrieve_docs": retrieve_docs,
+    "run_correlation": run_correlation,
+    "run_group_comparison": run_group_comparison,
+    "run_ols": run_ols,
 }
 
 
@@ -186,5 +193,150 @@ TOOLS = [
                 "required": ["dataset_path"],
             },
         },
-    }
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "run_correlation",
+            "description": (
+                "Calculate Pearson or Spearman correlation "
+                "between two numeric CSV columns. Use this "
+                "for questions about statistical correlation "
+                "or association."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "x_column": {
+                        "type": "string",
+                        "description": (
+                            "The first numeric column."
+                        ),
+                    },
+                    "y_column": {
+                        "type": "string",
+                        "description": (
+                            "The second numeric column."
+                        ),
+                    },
+                    "method": {
+                        "type": "string",
+                        "enum": [
+                            "pearson",
+                            "spearman",
+                        ],
+                        "default": "pearson",
+                        "description": (
+                            "The correlation method."
+                        ),
+                    },
+                },
+                "required": [
+                    "x_column",
+                    "y_column",
+                ],
+                "additionalProperties": False,
+            },
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "run_group_comparison",
+            "description": (
+                "Compare a numeric value across groups. "
+                "The tool automatically uses Welch's t-test "
+                "for two groups and one-way ANOVA for three "
+                "or more groups."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "group_column": {
+                        "type": "string",
+                        "description": (
+                            "The column defining the groups."
+                        ),
+                    },
+                    "value_column": {
+                        "type": "string",
+                        "description": (
+                            "The numeric variable being "
+                            "compared across groups."
+                        ),
+                    },
+                },
+                "required": [
+                    "group_column",
+                    "value_column",
+                ],
+                "additionalProperties": False,
+            },
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "run_ols",
+            "description": (
+                "Run an OLS regression with robust standard "
+                "errors. Use this when the user asks about "
+                "the relationship between variables while "
+                "controlling for other variables."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "outcome": {
+                        "type": "string",
+                        "description": (
+                            "The numeric dependent variable."
+                        ),
+                    },
+                    "predictors": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                        },
+                        "minItems": 1,
+                        "description": (
+                            "The predictor variables."
+                        ),
+                    },
+                    "categorical_columns": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                        },
+                        "default": [],
+                        "description": (
+                            "Predictors that should be "
+                            "treated as categorical."
+                        ),
+                    },
+                    "robust_covariance": {
+                        "type": "string",
+                        "enum": [
+                            "HC0",
+                            "HC1",
+                            "HC2",
+                            "HC3",
+                        ],
+                        "default": "HC3",
+                        "description": (
+                            "The robust covariance type."
+                        ),
+                    },
+                },
+                "required": [
+                    "outcome",
+                    "predictors",
+                ],
+                "additionalProperties": False,
+            },
+        },
+    },
 ]
