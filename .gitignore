@@ -16,3 +16,4 @@ outputs/evals/*.jsonl
 storage/
 
 outputs/reports/*
+requirements_before_week6.txt
