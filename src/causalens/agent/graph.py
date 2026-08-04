@@ -12,6 +12,8 @@ from causalens.agent.nodes import (
     tool_decision_node,
     tool_executor_node,
     tool_validator_node,
+    causal_readiness_node,
+    causal_execution_node,
 )
 from causalens.agent.state import AgentState, create_initial_state
 
@@ -36,6 +38,129 @@ def route_after_intent(
     print("[route_after_intent] 请求受支持，进入 planner")
     return "planner"
 
+def route_after_causal_readiness(
+    state: AgentState,
+) -> Literal[
+    "causal_execution",
+    "end",
+]:
+    """
+    readiness 通过且已确认时执行 DML；
+    其余情况结束本轮 Graph。
+    """
+
+    readiness = state.get(
+        "causal_readiness",
+        {},
+    )
+    approved = state.get("approved")
+    workflow_status = state.get(
+        "workflow_status"
+    )
+
+    print(
+        "\n[route_after_causal_readiness] "
+        "正在判断 readiness 后的下一步"
+    )
+
+    if (
+        isinstance(readiness, dict)
+        and readiness.get("ready") is True
+        and approved is True
+        and workflow_status
+        == "causal_execution"
+    ):
+        print(
+            "[route_after_causal_readiness] "
+            "准备度通过且已确认，"
+            "进入 causal_execution"
+        )
+        return "causal_execution"
+
+    print(
+        "[route_after_causal_readiness] "
+        "当前不执行 DML，结束本轮 Graph"
+    )
+    return "end"
+
+def route_after_planner(
+    state: AgentState,
+) -> Literal[
+    "causal_readiness",
+    "tool_decision",
+]:
+    """
+    因果任务进入固定 readiness 节点；
+    其他任务继续使用普通工具决策流程。
+    """
+
+    task_type = state.get(
+        "task_type",
+        "unsupported",
+    )
+
+    print(
+        "\n[route_after_planner] "
+        "正在判断计划后的下一步"
+    )
+
+    if task_type == "causal_analysis":
+        print(
+            "[route_after_planner] "
+            "因果任务进入 causal_readiness"
+        )
+        return "causal_readiness"
+
+    print(
+        "[route_after_planner] "
+        "普通任务进入 tool_decision"
+    )
+    return "tool_decision"
+
+def route_after_causal_readiness(
+    state: AgentState,
+) -> Literal[
+    "causal_execution",
+    "end",
+]:
+    """
+    readiness 通过且已确认时执行 DML；
+    其余情况结束本轮 Graph。
+    """
+
+    readiness = state.get(
+        "causal_readiness",
+        {},
+    )
+    approved = state.get("approved")
+    workflow_status = state.get(
+        "workflow_status"
+    )
+
+    print(
+        "\n[route_after_causal_readiness] "
+        "正在判断 readiness 后的下一步"
+    )
+
+    if (
+        isinstance(readiness, dict)
+        and readiness.get("ready") is True
+        and approved is True
+        and workflow_status
+        == "causal_execution"
+    ):
+        print(
+            "[route_after_causal_readiness] "
+            "准备度通过且已确认，"
+            "进入 causal_execution"
+        )
+        return "causal_execution"
+
+    print(
+        "[route_after_causal_readiness] "
+        "当前不执行 DML，结束本轮 Graph"
+    )
+    return "end"
 
 def route_after_tool_decision(
     state: AgentState,
@@ -144,6 +269,15 @@ def build_causalens_graph():
         planner_node,
     )
     graph_builder.add_node(
+        "causal_readiness",
+        causal_readiness_node,
+    )
+
+    graph_builder.add_node(
+        "causal_execution",
+        causal_execution_node,
+    )
+    graph_builder.add_node(
         "tool_decision",
         tool_decision_node,
     )
@@ -181,9 +315,35 @@ def build_causalens_graph():
     )
 
     # 生成计划后进入工具决策
-    graph_builder.add_edge(
+    # 因果任务进入固定 readiness 检查；
+    # 其他任务继续进入普通工具决策。
+    graph_builder.add_conditional_edges(
         "planner",
-        "tool_decision",
+        route_after_planner,
+        {
+            "causal_readiness": (
+                "causal_readiness"
+            ),
+            "tool_decision": "tool_decision",
+        },
+    )
+
+    # readiness 通过且用户已确认时执行 DML；
+    # 未确认或准备度未通过时结束本轮 Graph。
+    graph_builder.add_conditional_edges(
+        "causal_readiness",
+        route_after_causal_readiness,
+        {
+            "causal_execution": (
+                "causal_execution"
+            ),
+            "end": END,
+        },
+    )
+
+    graph_builder.add_edge(
+        "causal_execution",
+        "reporter",
     )
 
     # 工具决策成功后先验证，不直接执行
@@ -237,6 +397,7 @@ def run_causalens_graph(
     dataset_path: str,
     question: str,
     max_steps: int = 5,
+    approved: bool | None = None,
 ) -> AgentState:
     """
     创建初始状态并运行 CausaLens 工作流。
@@ -248,6 +409,7 @@ def run_causalens_graph(
         dataset_path=dataset_path,
         question=question,
         max_steps=max_steps,
+        approved=approved,
     )
 
     final_state: dict[str, Any] = graph.invoke(initial_state)

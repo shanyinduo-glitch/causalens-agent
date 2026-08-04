@@ -27,6 +27,9 @@ WorkflowStatus = Literal[
     "reporting",
     "completed",
     "failed",
+    "awaiting_approval",
+    "blocked",
+    "causal_execution",
 ]
 
 
@@ -137,6 +140,7 @@ def create_initial_state(
     dataset_path: str,
     question: str,
     max_steps: int = 5,
+    approved: bool | None = None,
 ) -> AgentState:
     """
     创建一次 CausaLens 工作流的初始状态。
@@ -170,5 +174,5 @@ def create_initial_state(
         "confounders": [],
         "causal_readiness": {},
         "requires_approval": False,
-        "approved": None,
+        "approved":  approved,
     }

@@ -73,6 +73,160 @@ def ask(
         )
         raise typer.Exit(code=1)
 
+    # 因果任务第一次运行只执行 readiness，
+    # 不会直接运行 DML。
+    if (
+        final_state.get("workflow_status")
+        == "awaiting_approval"
+        and final_state.get(
+            "requires_approval"
+        )
+        is True
+    ):
+        treatment = final_state.get(
+            "treatment"
+        )
+        outcome = final_state.get(
+            "outcome"
+        )
+        confounders = final_state.get(
+            "confounders",
+            [],
+        )
+        readiness = final_state.get(
+            "causal_readiness",
+            {},
+        )
+
+        if not isinstance(readiness, dict):
+            readiness = {}
+
+        sample_summary = readiness.get(
+            "sample_summary",
+            {},
+        )
+        warnings = readiness.get(
+            "warnings",
+            [],
+        )
+
+        if not isinstance(
+            sample_summary,
+            dict,
+        ):
+            sample_summary = {}
+
+        if not isinstance(warnings, list):
+            warnings = []
+
+        console.print()
+        console.print(
+            "[bold yellow]"
+            "因果分析准备度检查已通过"
+            "[/bold yellow]"
+        )
+
+        console.print(
+            f"- treatment：{treatment}"
+        )
+        console.print(
+            f"- outcome：{outcome}"
+        )
+        console.print(
+            f"- confounders：{confounders}"
+        )
+        console.print(
+            "- 完整样本数："
+            f"{sample_summary.get('complete_cases')}"
+        )
+        console.print(
+            "- treatment 分组："
+            f"{sample_summary.get('treatment_counts')}"
+        )
+
+        if warnings:
+            console.print()
+            console.print(
+                "[bold yellow]"
+                "执行前警告："
+                "[/bold yellow]"
+            )
+
+            for warning in warnings:
+                console.print(
+                    f"- {warning}"
+                )
+
+        console.print()
+        console.print(
+            "下一步将使用 LinearDML 估计 "
+            "treatment 从 0 到 1 的平均处理效应"
+            "（ATE）。"
+        )
+        console.print(
+            "准备度通过只代表满足最低技术条件，"
+            "不代表无未观测混杂等因果假设已经成立。"
+        )
+
+        approved = typer.confirm(
+            "是否继续执行 LinearDML 因果效应估计？",
+            default=False,
+        )
+
+        if approved:
+            try:
+                final_state = (
+                    run_causalens_graph(
+                        dataset_path=(
+                            dataset_path
+                        ),
+                        question=question,
+                        approved=True,
+                    )
+                )
+
+            except Exception as exc:
+                console.print(
+                    "[bold red]"
+                    "因果分析执行失败："
+                    f"{exc}"
+                    "[/bold red]"
+                )
+                raise typer.Exit(code=1)
+
+        else:
+            previous_answer = str(
+                final_state.get(
+                    "final_answer",
+                    "",
+                )
+            ).strip()
+
+            cancellation_message = (
+                "用户未确认继续执行，"
+                "因此 LinearDML 未运行，"
+                "也没有产生 ATE 估计。"
+            )
+
+            if previous_answer:
+                final_answer = (
+                    f"{previous_answer}\n\n"
+                    f"{cancellation_message}"
+                )
+            else:
+                final_answer = (
+                    cancellation_message
+                )
+
+            final_state = {
+                **final_state,
+                "approved": False,
+                "requires_approval": False,
+                "workflow_status": "completed",
+                "final_answer": final_answer,
+                "error": None,
+            }
+
     task_type = final_state.get(
         "task_type",
         "未识别",

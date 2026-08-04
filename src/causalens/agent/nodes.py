@@ -13,6 +13,10 @@ from causalens.agent.tool_registry import TOOL_REGISTRY, TOOLS
 from causalens.observability import append_tool_call_log
 from causalens.schemas import ToolCall, ToolResult
 from pydantic import BaseModel
+from causalens.tools.causal_readiness import (
+    check_causal_readiness,
+)
+from causalens.tools.causal_tool import run_dml
 
 DESTRUCTIVE_KEYWORDS = [
     "删除",
@@ -111,6 +115,78 @@ OLS_INTENT_KEYWORDS = (
     "保持其他变量不变",
 )
 
+CAUSAL_INTENT_KEYWORDS = (
+    "因果分析",
+    "因果效应",
+    "是否导致",
+    "会不会导致",
+    "是否造成",
+    "处理效应",
+    "平均处理效应",
+    "dml",
+    "lineardml",
+    "处理变量",
+    "结果变量",
+    "混杂变量",
+)
+
+CAUSAL_CONFIGURATION_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": (
+                "extract_causal_configuration"
+            ),
+            "description": (
+                "Extract the treatment, outcome, "
+                "and explicitly stated confounders "
+                "from a causal analysis request."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "treatment": {
+                        "type": "string",
+                        "description": (
+                            "The explicitly stated "
+                            "binary treatment column. "
+                            "Use an empty string when "
+                            "it is not stated."
+                        ),
+                    },
+                    "outcome": {
+                        "type": "string",
+                        "description": (
+                            "The explicitly stated "
+                            "numeric outcome column. "
+                            "Use an empty string when "
+                            "it is not stated."
+                        ),
+                    },
+                    "confounders": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                        },
+                        "description": (
+                            "Only the confounder columns "
+                            "explicitly stated by the "
+                            "user. Use an empty list "
+                            "when none are stated."
+                        ),
+                    },
+                },
+                "required": [
+                    "treatment",
+                    "outcome",
+                    "confounders",
+                ],
+                "additionalProperties": False,
+            },
+        },
+    },
+]
+
 def _contains_any(
     text: str,
     keywords: list[str],
@@ -162,6 +238,12 @@ def intent_router_node(
         CHART_INTENT_KEYWORDS,
     )
 
+    has_causal_intent = (
+        _has_causal_analysis_intent(
+            question
+        )
+    )
+
     statistical_tool_name = (
         _infer_statistical_tool_name(
             question
@@ -182,21 +264,19 @@ def intent_router_node(
 
     # 破坏性请求永远最高优先级。
     if _contains_any(
-        question,
-        DESTRUCTIVE_KEYWORDS,
+            question,
+            DESTRUCTIVE_KEYWORDS,
     ):
         task_type = "unsupported"
 
-    # 统计问题优先于普通 SQL。
-    #
-    # 例如“不同专业的平均 score 是否存在显著差异”
-    # 可能同时命中 SQL 关键词“平均”，但真正需要的是
-    # ANOVA，而不是只计算分组均值。
+    # 因果任务必须优先于 OLS 和普通文档问题。
+    elif has_causal_intent:
+        task_type = "causal_analysis"
+        analysis_method = "linear_dml"
+
     elif statistical_tool_name is not None:
         task_type = "statistical_analysis"
-        analysis_method = (
-            statistical_tool_name
-        )
+        analysis_method = statistical_tool_name
 
     elif intent_count >= 2:
         task_type = "mixed_analysis"
@@ -249,6 +329,75 @@ SINGLE_TOOL_BY_TASK_TYPE: dict[TaskType, str | None] = {
     "unsupported": None,
 }
 
+def _has_causal_analysis_intent(
+    question: str,
+) -> bool:
+    """
+    判断用户是否明确要求执行因果分析。
+
+    普通的因果概念问题不进入 DML 工作流。
+    """
+    normalized_question = (
+        question.strip().lower()
+    )
+
+    has_standalone_ate = bool(
+        re.search(
+            r"(?<![A-Za-z0-9_])"
+            r"ate"
+            r"(?![A-Za-z0-9_])",
+            normalized_question,
+        )
+    )
+
+    if (
+            _contains_any(
+                normalized_question,
+                list(CAUSAL_INTENT_KEYWORDS),
+            )
+            or has_standalone_ate
+    ):
+        return True
+
+    # “因果关系”单独出现时需要进一步区分：
+    # “估计两变量是否存在因果关系”属于因果任务；
+    # “相关和因果有什么区别”属于概念问题。
+    if "因果关系" in normalized_question:
+        analysis_markers = (
+            "估计",
+            "分析",
+            "检验",
+            "判断",
+            "识别",
+            "是否存在",
+            "有没有",
+        )
+
+        conceptual_markers = (
+            "区别",
+            "等于",
+            "意味着",
+            "能否说明",
+            "为什么",
+            "是什么",
+        )
+
+        has_analysis_marker = any(
+            marker in normalized_question
+            for marker in analysis_markers
+        )
+        has_conceptual_marker = any(
+            marker in normalized_question
+            for marker in conceptual_markers
+        )
+
+        return (
+            has_analysis_marker
+            and not has_conceptual_marker
+        )
+
+    return False
+
 def _infer_statistical_tool_name(
     question: str,
 ) -> str | None:
@@ -284,6 +433,260 @@ def _infer_statistical_tool_name(
         return "run_correlation"
 
     return None
+
+def _validate_causal_configuration_payload(
+    payload: dict[str, Any],
+    available_columns: set[str],
+) -> tuple[
+    dict[str, Any] | None,
+    list[str],
+]:
+    """
+    验证模型提取出的因果变量配置。
+
+    不自动补全或猜测缺失变量。
+    """
+    errors: list[str] = []
+
+    treatment = payload.get("treatment")
+    outcome = payload.get("outcome")
+    confounders = payload.get(
+        "confounders"
+    )
+
+    if not isinstance(treatment, str):
+        errors.append(
+            "treatment 必须是字符串。"
+        )
+        treatment = ""
+    else:
+        treatment = treatment.strip()
+
+    if not isinstance(outcome, str):
+        errors.append(
+            "outcome 必须是字符串。"
+        )
+        outcome = ""
+    else:
+        outcome = outcome.strip()
+
+    if not isinstance(confounders, list):
+        errors.append(
+            "confounders 必须是列表。"
+        )
+        confounders = []
+
+    elif not all(
+        isinstance(column, str)
+        and column.strip()
+        for column in confounders
+    ):
+        errors.append(
+            "confounders 中的字段名"
+            "必须是非空字符串。"
+        )
+        confounders = []
+
+    else:
+        confounders = [
+            column.strip()
+            for column in confounders
+        ]
+
+    if not treatment:
+        errors.append(
+            "用户没有明确指定 treatment。"
+        )
+
+    if not outcome:
+        errors.append(
+            "用户没有明确指定 outcome。"
+        )
+
+    if not confounders:
+        errors.append(
+            "用户没有明确指定 confounders。"
+        )
+
+    if (
+        treatment
+        and outcome
+        and treatment == outcome
+    ):
+        errors.append(
+            "treatment 和 outcome "
+            "不能是同一字段。"
+        )
+
+    if len(confounders) != len(
+        set(confounders)
+    ):
+        errors.append(
+            "confounders 中存在重复字段。"
+        )
+
+    if treatment in confounders:
+        errors.append(
+            "treatment 不能同时作为 confounder。"
+        )
+
+    if outcome in confounders:
+        errors.append(
+            "outcome 不能同时作为 confounder。"
+        )
+
+    requested_columns = {
+        treatment,
+        outcome,
+        *confounders,
+    }
+    requested_columns.discard("")
+
+    missing_columns = sorted(
+        requested_columns
+        - available_columns
+    )
+
+    if missing_columns:
+        errors.append(
+            "以下因果分析字段不存在于 CSV："
+            f"{missing_columns}。"
+            "可用字段："
+            f"{sorted(available_columns)}"
+        )
+
+    if errors:
+        return None, errors
+
+    return {
+        "treatment": treatment,
+        "outcome": outcome,
+        "confounders": confounders,
+    }, []
+
+
+def _extract_causal_configuration(
+    dataset_path: str,
+    question: str,
+) -> tuple[
+    dict[str, Any] | None,
+    str | None,
+]:
+    """
+    从用户问题中提取明确指定的因果变量配置。
+
+    模型只负责提取；
+    Python 负责字段存在性和变量关系验证。
+    """
+    try:
+        dataframe_header = pd.read_csv(
+            dataset_path,
+            nrows=0,
+        )
+        available_columns = set(
+            dataframe_header.columns.tolist()
+        )
+
+    except Exception as exc:
+        return None, (
+            f"无法读取数据集字段：{exc}"
+        )
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "你是 CausaLens 的因果变量提取节点。\n"
+                "只提取用户明确说出的变量，不得猜测、"
+                "补全或根据字段名自行选择变量。\n"
+                "如果用户没有明确给出 treatment、"
+                "outcome 或 confounders，分别返回"
+                "空字符串或空列表。\n"
+                "必须生成一次 "
+                "extract_causal_configuration "
+                "工具调用，不要直接回答用户。"
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"可用 CSV 字段："
+                f"{sorted(available_columns)}\n\n"
+                f"用户问题：{question}"
+            ),
+        },
+    ]
+
+    try:
+        response = create_chat_completion(
+            messages=messages,
+            tools=CAUSAL_CONFIGURATION_TOOLS,
+            tool_choice="auto",
+        )
+
+        assistant_message = (
+            response.choices[0].message
+        )
+        requested_tool_calls = (
+            assistant_message.tool_calls
+            or []
+        )
+
+    except Exception as exc:
+        return None, (
+            "因果变量提取模型调用失败："
+            f"{exc}"
+        )
+
+    if not requested_tool_calls:
+        return None, (
+            "因果变量提取模型没有生成"
+            "工具调用。"
+        )
+
+    raw_tool_call = requested_tool_calls[0]
+
+    if (
+        raw_tool_call.function.name
+        != "extract_causal_configuration"
+    ):
+        return None, (
+            "因果变量提取模型调用了"
+            "错误的工具："
+            f"{raw_tool_call.function.name}"
+        )
+
+    try:
+        payload = json.loads(
+            raw_tool_call.function.arguments
+        )
+
+    except (
+        json.JSONDecodeError,
+        TypeError,
+    ):
+        return None, (
+            "因果变量提取结果不是合法 JSON。"
+        )
+
+    if not isinstance(payload, dict):
+        return None, (
+            "因果变量提取结果必须是 JSON 对象。"
+        )
+
+    configuration, errors = (
+        _validate_causal_configuration_payload(
+            payload=payload,
+            available_columns=(
+                available_columns
+            ),
+        )
+    )
+
+    if errors:
+        return None, "；".join(errors)
+
+    return configuration, None
 
 
 def _infer_required_tool_names(
@@ -1867,6 +2270,535 @@ def tool_decision_node(state: AgentState) -> AgentState:
         "error": None,
     }
 
+def causal_readiness_node(
+    state: AgentState,
+) -> AgentState:
+    """
+    提取因果变量配置并执行准备度检查。
+
+    此节点绝不执行 DML。
+    readiness 通过后只进入 awaiting_approval，
+    等待 CLI 获得用户明确确认。
+    """
+
+    dataset_path = str(
+        state.get("dataset_path") or ""
+    )
+    question = str(
+        state.get("question") or ""
+    )
+    step_count = int(
+        state.get("step_count") or 0
+    )
+    approved = state.get("approved")
+
+    print(
+        "\n[causal_readiness_node] "
+        "开始因果分析准备度检查"
+    )
+
+    configuration, extraction_error = (
+        _extract_causal_configuration(
+            dataset_path=dataset_path,
+            question=question,
+        )
+    )
+
+    if extraction_error or configuration is None:
+        error = (
+            extraction_error
+            or "无法提取因果变量配置。"
+        )
+
+        print(
+            "[causal_readiness_node] "
+            f"变量配置提取失败：{error}"
+        )
+
+        return {
+            "requires_approval": False,
+            "approved": None,
+            "workflow_status": "failed",
+            "final_answer": (
+                "无法进入因果分析准备度检查。\n\n"
+                f"原因：{error}\n\n"
+                "请在问题中明确指定：\n"
+                "- treatment（处理变量）\n"
+                "- outcome（结果变量）\n"
+                "- confounders（混杂变量）"
+            ),
+            "error": error,
+        }
+
+    treatment = configuration["treatment"]
+    outcome = configuration["outcome"]
+    confounders = configuration[
+        "confounders"
+    ]
+
+    arguments = {
+        "dataset_path": dataset_path,
+        "treatment": treatment,
+        "outcome": outcome,
+        "confounders": confounders,
+    }
+
+    print(
+        "[causal_readiness_node] "
+        f"treatment={treatment}"
+    )
+    print(
+        "[causal_readiness_node] "
+        f"outcome={outcome}"
+    )
+    print(
+        "[causal_readiness_node] "
+        f"confounders={confounders}"
+    )
+
+    started_at = perf_counter()
+
+    try:
+        raw_result = check_causal_readiness(
+            **arguments
+        )
+
+    except Exception as exc:
+        raw_result = {
+            "success": False,
+            "result": None,
+            "error": (
+                "因果准备度检查执行异常："
+                f"{exc}"
+            ),
+        }
+
+    duration_ms = (
+        perf_counter() - started_at
+    ) * 1000
+
+    tool_result = _normalize_tool_result(
+        tool_name=(
+            "check_causal_readiness"
+        ),
+        raw_result=raw_result,
+    )
+
+    append_tool_call_log(
+        question=question,
+        dataset_path=dataset_path,
+        tool_name=(
+            "check_causal_readiness"
+        ),
+        arguments=arguments,
+        success=tool_result.success,
+        result=tool_result.result,
+        error=tool_result.error,
+        duration_ms=duration_ms,
+    )
+
+    tool_call = {
+        "tool_name": (
+            "check_causal_readiness"
+        ),
+        "arguments": arguments,
+    }
+
+    base_updates: AgentState = {
+        "treatment": treatment,
+        "outcome": outcome,
+        "confounders": confounders,
+        "tool_calls": [tool_call],
+        "tool_results": [
+            tool_result.model_dump()
+        ],
+        "step_count": step_count + 1,
+        "pending_tool_call": None,
+        "approved": approved,
+    }
+
+    if not tool_result.success:
+        error = (
+            tool_result.error
+            or "因果准备度检查失败。"
+        )
+
+        print(
+            "[causal_readiness_node] "
+            f"执行失败：{error}"
+        )
+
+        return {
+            **base_updates,
+            "causal_readiness": {},
+            "requires_approval": False,
+            "workflow_status": "failed",
+            "final_answer": (
+                "因果分析准备度检查失败。\n\n"
+                f"原因：{error}"
+            ),
+            "error": error,
+        }
+
+    readiness = (
+        tool_result.result or {}
+    )
+    ready = (
+        readiness.get("ready") is True
+    )
+
+    blocking_issues = readiness.get(
+        "blocking_issues",
+        [],
+    )
+    warnings = readiness.get(
+        "warnings",
+        [],
+    )
+    sample_summary = readiness.get(
+        "sample_summary",
+        {},
+    )
+
+    if not isinstance(
+        blocking_issues,
+        list,
+    ):
+        blocking_issues = []
+
+    if not isinstance(warnings, list):
+        warnings = []
+
+    if not isinstance(
+        sample_summary,
+        dict,
+    ):
+        sample_summary = {}
+
+    if not ready:
+        issue_text = "\n".join(
+            f"- {issue}"
+            for issue in blocking_issues
+        )
+
+        if not issue_text:
+            issue_text = (
+                "- 准备度检查未提供具体阻塞原因。"
+            )
+
+        print(
+            "[causal_readiness_node] "
+            "准备度未通过，禁止执行 DML"
+        )
+
+        return {
+            **base_updates,
+            "causal_readiness": readiness,
+            "requires_approval": False,
+            "workflow_status": "blocked",
+            "final_answer": (
+                "当前变量配置未通过因果分析"
+                "准备度检查，因此不会执行 DML。\n\n"
+                "变量配置：\n"
+                f"- treatment：{treatment}\n"
+                f"- outcome：{outcome}\n"
+                f"- confounders：{confounders}\n\n"
+                "阻塞原因：\n"
+                f"{issue_text}"
+            ),
+            "error": None,
+        }
+
+    if approved is True:
+        print(
+            "[causal_readiness_node] "
+            "准备度通过且用户已经确认，"
+            "进入 DML 执行"
+        )
+
+        return {
+            **base_updates,
+            "causal_readiness": readiness,
+            "requires_approval": False,
+            "workflow_status": (
+                "causal_execution"
+            ),
+            "final_answer": "",
+            "error": None,
+        }
+
+    warning_text = "\n".join(
+        f"- {warning}"
+        for warning in warnings
+    )
+
+    if not warning_text:
+        warning_text = (
+            "- 没有返回额外警告，"
+            "但因果识别假设仍不能仅凭 CSV 验证。"
+        )
+
+    total_rows = sample_summary.get(
+        "total_rows"
+    )
+    complete_cases = sample_summary.get(
+        "complete_cases"
+    )
+    treatment_counts = sample_summary.get(
+        "treatment_counts",
+        {},
+    )
+
+    print(
+        "[causal_readiness_node] "
+        "准备度通过，等待用户确认"
+    )
+
+    return {
+        **base_updates,
+        "causal_readiness": readiness,
+        "requires_approval": True,
+        "workflow_status": (
+            "awaiting_approval"
+        ),
+        "final_answer": (
+            "因果分析准备度检查已通过，"
+            "但尚未执行 DML。\n\n"
+            "变量配置：\n"
+            f"- treatment：{treatment}\n"
+            f"- outcome：{outcome}\n"
+            f"- confounders：{confounders}\n\n"
+            "样本概况：\n"
+            f"- 总行数：{total_rows}\n"
+            f"- 完整样本：{complete_cases}\n"
+            f"- treatment 组数："
+            f"{treatment_counts}\n\n"
+            "主要警告：\n"
+            f"{warning_text}\n\n"
+            "下一步将使用 LinearDML 估计"
+            " treatment 从 0 到 1 的平均处理效应"
+            "（ATE）。该结果依赖无未观测混杂、"
+            "重叠性和一致性等假设。\n\n"
+            "需要用户明确确认后才能继续执行。"
+        ),
+        "error": None,
+    }
+
+def causal_execution_node(
+    state: AgentState,
+) -> AgentState:
+    """
+    在 readiness 已通过且用户明确确认后执行 DML。
+
+    该节点不允许跳过准备度检查或人工确认。
+    """
+
+    dataset_path = str(
+        state.get("dataset_path") or ""
+    )
+    question = str(
+        state.get("question") or ""
+    )
+    treatment = state.get("treatment")
+    outcome = state.get("outcome")
+    confounders = state.get(
+        "confounders",
+        [],
+    )
+    readiness = state.get(
+        "causal_readiness",
+        {},
+    )
+    approved = state.get("approved")
+    step_count = int(
+        state.get("step_count") or 0
+    )
+
+    print(
+        "\n[causal_execution_node] "
+        "开始检查 DML 执行条件"
+    )
+
+    if approved is not True:
+        error = (
+            "用户尚未明确确认，"
+            "禁止执行 DML。"
+        )
+
+        return {
+            "requires_approval": True,
+            "workflow_status": (
+                "awaiting_approval"
+            ),
+            "final_answer": error,
+            "error": error,
+        }
+
+    if (
+        not isinstance(readiness, dict)
+        or readiness.get("ready") is not True
+    ):
+        error = (
+            "因果准备度未通过，"
+            "禁止执行 DML。"
+        )
+
+        return {
+            "requires_approval": False,
+            "workflow_status": "blocked",
+            "final_answer": error,
+            "error": error,
+        }
+
+    if (
+        not isinstance(treatment, str)
+        or not treatment.strip()
+    ):
+        return {
+            "workflow_status": "failed",
+            "error": "缺少 treatment。",
+            "final_answer": (
+                "无法执行 DML：缺少 treatment。"
+            ),
+        }
+
+    if (
+        not isinstance(outcome, str)
+        or not outcome.strip()
+    ):
+        return {
+            "workflow_status": "failed",
+            "error": "缺少 outcome。",
+            "final_answer": (
+                "无法执行 DML：缺少 outcome。"
+            ),
+        }
+
+    if (
+        not isinstance(confounders, list)
+        or not confounders
+        or not all(
+            isinstance(column, str)
+            and column.strip()
+            for column in confounders
+        )
+    ):
+        return {
+            "workflow_status": "failed",
+            "error": "缺少有效 confounders。",
+            "final_answer": (
+                "无法执行 DML："
+                "缺少有效 confounders。"
+            ),
+        }
+
+    arguments = {
+        "dataset_path": dataset_path,
+        "treatment": treatment,
+        "outcome": outcome,
+        "confounders": confounders,
+        "discrete_treatment": True,
+        "random_state": 42,
+        "cv": 5,
+    }
+
+    print(
+        "[causal_execution_node] "
+        f"treatment={treatment}"
+    )
+    print(
+        "[causal_execution_node] "
+        f"outcome={outcome}"
+    )
+    print(
+        "[causal_execution_node] "
+        f"confounders={confounders}"
+    )
+
+    started_at = perf_counter()
+
+    try:
+        raw_result = run_dml(
+            **arguments
+        )
+
+    except Exception as exc:
+        raw_result = {
+            "success": False,
+            "result": None,
+            "error": (
+                "DML 执行异常："
+                f"{exc}"
+            ),
+        }
+
+    duration_ms = (
+        perf_counter() - started_at
+    ) * 1000
+
+    tool_result = _normalize_tool_result(
+        tool_name="run_dml",
+        raw_result=raw_result,
+    )
+
+    append_tool_call_log(
+        question=question,
+        dataset_path=dataset_path,
+        tool_name="run_dml",
+        arguments=arguments,
+        success=tool_result.success,
+        result=tool_result.result,
+        error=tool_result.error,
+        duration_ms=duration_ms,
+    )
+
+    tool_call = {
+        "tool_name": "run_dml",
+        "arguments": arguments,
+    }
+
+    updates: AgentState = {
+        "tool_calls": [tool_call],
+        "tool_results": [
+            tool_result.model_dump()
+        ],
+        "pending_tool_call": None,
+        "step_count": step_count + 1,
+        "requires_approval": False,
+    }
+
+    if not tool_result.success:
+        error = (
+            tool_result.error
+            or "DML 执行失败。"
+        )
+
+        print(
+            "[causal_execution_node] "
+            f"执行失败：{error}"
+        )
+
+        return {
+            **updates,
+            "workflow_status": "failed",
+            "final_answer": (
+                "因果效应估计执行失败。\n\n"
+                f"原因：{error}"
+            ),
+            "error": error,
+        }
+
+    print(
+        "[causal_execution_node] "
+        "DML 执行成功"
+    )
+
+    return {
+        **updates,
+        "workflow_status": "reporting",
+        "final_answer": "",
+        "error": None,
+    }
 
 def tool_validator_node(
     state: AgentState,
@@ -2547,6 +3479,15 @@ def reporter_node(state: AgentState) -> AgentState:
                 "为负时，只能表述为当前样本中的负向线性关联。"
                 "不得把相关关系解释为因果效应，"
                 "并应明确提醒相关性不能证明因果关系。\n"
+
+                "14. check_causal_readiness 通过只表示数据满足"
+                "当前 DML 工具的最低技术条件，不代表因果识别"
+                "假设已被证明，也不代表因果结论必然有效。\n"
+
+                "15. 如果 run_dml 成功，必须基于工具实际返回值"
+                "报告 ATE、95% 置信区间、样本量和原始组均值差。"
+                "必须同时说明主要因果假设与 warnings。"
+                "不得把估计结果表述为已经证明的因果事实。\n"
             ),
         },
         {

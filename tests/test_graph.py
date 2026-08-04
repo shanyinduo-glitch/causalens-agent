@@ -10,6 +10,8 @@ from causalens.agent.state import AgentState, TaskType
 import json
 from itertools import count
 from types import SimpleNamespace
+from causalens.agent import nodes
+from causalens.schemas import ToolResult
 
 DATASET_PATH = "data/student_performance.csv"
 
@@ -115,6 +117,39 @@ def make_fake_chat_completion():
 
     return fake_create_chat_completion
 
+def fake_retrieve_docs(
+    query: str,
+    top_k: int = 3,
+) -> ToolResult:
+    """
+    图工作流测试使用的离线 RAG 结果。
+
+    这里只测试 Graph 是否能完成工具调用流程，
+    不测试真实向量模型和 Hugging Face 网络。
+    """
+
+    return ToolResult(
+        tool_name="retrieve_docs",
+        success=True,
+        result={
+            "query": query,
+            "top_k": top_k,
+            "documents": [
+                {
+                    "source": (
+                        "knowledge/data_dictionary.md"
+                    ),
+                    "section": "passed",
+                    "content": (
+                        "passed 为二元字段："
+                        "1 表示通过，0 表示未通过。"
+                    ),
+                }
+            ],
+        },
+        error=None,
+    )
+
 @pytest.mark.parametrize(
     ("question", "expected_task_type"),
     [
@@ -152,6 +187,12 @@ def test_supported_question_runs_full_graph(
     monkeypatch.setattr(
         "causalens.agent.nodes.create_chat_completion",
         make_fake_chat_completion(),
+    )
+
+    monkeypatch.setitem(
+        nodes.TOOL_REGISTRY,
+        "retrieve_docs",
+        fake_retrieve_docs,
     )
 
     result = run_causalens_graph(
