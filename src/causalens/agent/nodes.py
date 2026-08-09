@@ -3014,6 +3014,31 @@ def _normalize_tool_result(
             ),
         )
 
+    raw_warnings = payload.get("warnings")
+
+    if (
+            raw_warnings is None
+            and isinstance(result_payload, dict)
+    ):
+        raw_warnings = result_payload.get(
+            "warnings"
+        )
+
+    warnings: list[str] = []
+
+    if isinstance(raw_warnings, list):
+        warnings = [
+            str(item)
+            for item in raw_warnings
+            if str(item).strip()
+        ]
+
+    elif (
+            isinstance(raw_warnings, str)
+            and raw_warnings.strip()
+    ):
+        warnings = [raw_warnings]
+
     error: str | None = None
 
     if not success:
@@ -3037,6 +3062,7 @@ def _normalize_tool_result(
         success=success,
         result=result_payload,
         error=error,
+        warnings=warnings,
     )
 
 def tool_executor_node(state: AgentState) -> AgentState:

@@ -1,4 +1,7 @@
-from causalens.tools.sql_tool import run_readonly_sql
+from causalens.tools.sql_tool import (
+    _validate_readonly_query,
+    run_readonly_sql,
+)
 
 
 def create_test_csv(tmp_path):
@@ -158,3 +161,48 @@ def test_run_readonly_sql_marks_truncated_results(tmp_path):
     assert result.result["truncated"] is True
     assert len(result.result["rows"]) == 100
 
+def test_readonly_validator_rejects_write_after_cte():
+    query = """
+    WITH filtered AS (
+        SELECT * FROM dataset
+        WHERE score < 60
+    )
+    DELETE FROM dataset
+    """
+
+    error = _validate_readonly_query(query)
+
+    assert error is not None
+    assert "Only read-only SQL is allowed" in error
+
+
+def test_readonly_validator_rejects_explain_write():
+    error = _validate_readonly_query(
+        "EXPLAIN DELETE FROM dataset"
+    )
+
+    assert error is not None
+    assert "Only read-only SQL is allowed" in error
+
+
+def test_readonly_validator_allows_safe_cte():
+    query = """
+    WITH high_scores AS (
+        SELECT *
+        FROM dataset
+        WHERE score >= 80
+    )
+    SELECT *
+    FROM high_scores
+    """
+
+    error = _validate_readonly_query(query)
+
+    assert error is None
+
+def test_readonly_validator_ignores_keyword_inside_string():
+    error = _validate_readonly_query(
+        "SELECT 'DELETE' AS operation_name"
+    )
+
+    assert error is None

@@ -134,16 +134,18 @@ def fake_retrieve_docs(
         result={
             "query": query,
             "top_k": top_k,
-            "documents": [
+            "results": [
                 {
-                    "source": (
-                        "knowledge/data_dictionary.md"
-                    ),
+                    "source": "data_dictionary.md",
+                    "chunk_id": "data_dictionary_passed_0",
+                    "chunk_index": 0,
+                    "path": "knowledge/data_dictionary.md",
                     "section": "passed",
                     "content": (
                         "passed 为二元字段："
                         "1 表示通过，0 表示未通过。"
                     ),
+                    "distance": 0.0,
                 }
             ],
         },

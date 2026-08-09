@@ -1,10 +1,30 @@
 from pathlib import Path
+import re
 
 import duckdb
 import pandas as pd
 
 from causalens.schemas import ToolResult
 
+def _strip_sql_literals_and_comments(query: str) -> str:
+    """
+    去掉 SQL 中的字符串、引用标识符和注释，
+    避免安全关键字检查产生明显误判。
+    """
+    pattern = re.compile(
+        r"""
+        '(?:''|[^'])*'          # 单引号字符串
+        |
+        "(?:""|[^"])*"          # 双引号标识符
+        |
+        --[^\r\n]*              # 单行注释
+        |
+        /\*.*?\*/               # 块注释
+        """,
+        re.VERBOSE | re.DOTALL,
+    )
+
+    return pattern.sub(" ", query)
 
 def _validate_readonly_query(query: str) -> str | None:
     """
@@ -22,18 +42,71 @@ def _validate_readonly_query(query: str) -> str | None:
     if not cleaned_query:
         return "SQL query cannot be empty."
 
-    # 允许最后有一个分号，但不允许一次执行多条 SQL。
-    if cleaned_query.endswith(";"):
-        cleaned_query = cleaned_query[:-1].strip()
+    sanitized_query = _strip_sql_literals_and_comments(
+        cleaned_query
+    ).strip()
 
-    if ";" in cleaned_query:
+    if not sanitized_query:
+        return "SQL query cannot be empty."
+
+    # 允许最后一个分号，但不允许多条 SQL。
+    if sanitized_query.endswith(";"):
+        sanitized_query = (
+            sanitized_query[:-1].strip()
+        )
+
+    if ";" in sanitized_query:
         return "Only one SQL statement is allowed."
 
-    first_keyword = cleaned_query.split(maxsplit=1)[0].upper()
+    first_keyword = (
+        sanitized_query
+        .split(maxsplit=1)[0]
+        .upper()
+    )
 
-    allowed_keywords = {"SELECT", "WITH", "EXPLAIN"}
+    allowed_keywords = {
+        "SELECT",
+        "WITH",
+        "EXPLAIN",
+    }
 
     if first_keyword not in allowed_keywords:
+        return (
+            "Only read-only SQL is allowed. "
+            "Please use SELECT, WITH, or EXPLAIN."
+        )
+
+    forbidden_keywords = {
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "DROP",
+        "CREATE",
+        "ALTER",
+        "TRUNCATE",
+        "REPLACE",
+        "MERGE",
+        "COPY",
+        "ATTACH",
+        "DETACH",
+        "INSTALL",
+        "LOAD",
+        "EXPORT",
+        "IMPORT",
+        "CALL",
+        "SET",
+        "PRAGMA",
+        "VACUUM",
+    }
+
+    sql_tokens = set(
+        re.findall(
+            r"\b[A-Za-z_][A-Za-z0-9_]*\b",
+            sanitized_query.upper(),
+        )
+    )
+
+    if sql_tokens & forbidden_keywords:
         return (
             "Only read-only SQL is allowed. "
             "Please use SELECT, WITH, or EXPLAIN."

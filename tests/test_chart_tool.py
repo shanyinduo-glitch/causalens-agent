@@ -542,3 +542,32 @@ def test_create_chart_rejects_unknown_chart_type(
     assert result.success is False
     assert "chart_type" in result.error
 
+def test_create_bar_count_rejects_all_missing_x_column(
+    tmp_path,
+    monkeypatch,
+):
+    csv_path = tmp_path / "all_missing_category.csv"
+
+    csv_path.write_text(
+        "category,score\n"
+        ",88\n"
+        ",92\n"
+        ",76\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        chart_tool,
+        "CHART_OUTPUT_DIR",
+        tmp_path / "charts",
+    )
+
+    result = chart_tool.create_chart(
+        dataset_path=str(csv_path),
+        chart_type="bar",
+        x_column="category",
+        aggregation="count",
+    )
+
+    assert result.success is False
+    assert "数据为空" in result.error

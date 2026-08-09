@@ -24,6 +24,7 @@ class ToolResult(BaseModel):
     success: bool
     result: dict[str, Any] | None = None
     error: str | None = None
+    warnings: list[str] = Field(default_factory=list)
 
 
 class DatasetProfile(BaseModel):

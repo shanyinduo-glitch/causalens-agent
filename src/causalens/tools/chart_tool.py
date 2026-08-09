@@ -62,6 +62,12 @@ def _build_bar_summary(
             .sort_values("count", ascending=False)
         )
 
+        if summary_df.empty:
+            raise ValueError(
+                "用于生成柱状图的数据为空。"
+                "请检查分类列是否全部为缺失值。"
+            )
+
         return summary_df, "count"
 
     if request.y_column is None:

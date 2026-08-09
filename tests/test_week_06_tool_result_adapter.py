@@ -60,6 +60,10 @@ def test_adapts_statistical_result():
             "score",
         ]
     )
+    assert (
+            "Correlation does not establish causality."
+            in normalized.warnings
+    )
 
 
 def test_rejects_unsupported_return_type():
