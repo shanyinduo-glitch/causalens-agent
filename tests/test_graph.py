@@ -4,6 +4,10 @@ import pytest
 
 from causalens.agent.graph import (
     route_after_intent,
+    route_after_planner,
+    route_after_tool_decision,
+    route_after_tool_validation,
+    route_after_result_check,
     run_causalens_graph,
 )
 from causalens.agent.state import AgentState, TaskType
@@ -266,6 +270,144 @@ def test_route_after_intent_sends_unsupported_to_reporter() -> None:
 
     assert route_after_intent(state) == "reporter"
 
+@pytest.mark.parametrize(
+    ("task_type", "expected_destination"),
+    [
+        ("causal_analysis", "causal_readiness"),
+        ("data_profile", "tool_decision"),
+        ("sql_analysis", "tool_decision"),
+        ("statistical_analysis", "tool_decision"),
+    ],
+)
+def test_route_after_planner(
+    task_type: TaskType,
+    expected_destination: str,
+) -> None:
+    state: AgentState = {
+        "task_type": task_type,
+    }
+
+    assert (
+        route_after_planner(state)
+        == expected_destination
+    )
+
+
+def test_route_after_tool_decision_sends_error_to_reporter() -> None:
+    state: AgentState = {
+        "error": "工具决策失败",
+        "pending_tool_call": {
+            "name": "profile_dataset",
+            "arguments": {},
+        },
+    }
+
+    assert (
+        route_after_tool_decision(state)
+        == "reporter"
+    )
+
+
+def test_route_after_tool_decision_without_call_goes_to_reporter() -> None:
+    state: AgentState = {
+        "error": None,
+        "pending_tool_call": None,
+    }
+
+    assert (
+        route_after_tool_decision(state)
+        == "reporter"
+    )
+
+
+def test_route_after_tool_decision_with_call_goes_to_validator() -> None:
+    state: AgentState = {
+        "error": None,
+        "pending_tool_call": {
+            "name": "profile_dataset",
+            "arguments": {},
+        },
+    }
+
+    assert (
+        route_after_tool_decision(state)
+        == "tool_validator"
+    )
+
+
+def test_route_after_tool_validation_sends_error_to_reporter() -> None:
+    state: AgentState = {
+        "error": "达到验证重试上限",
+        "pending_tool_call": None,
+    }
+
+    assert (
+        route_after_tool_validation(state)
+        == "reporter"
+    )
+
+
+def test_route_after_tool_validation_with_call_goes_to_executor() -> None:
+    state: AgentState = {
+        "error": None,
+        "pending_tool_call": {
+            "name": "profile_dataset",
+            "arguments": {},
+        },
+    }
+
+    assert (
+        route_after_tool_validation(state)
+        == "tool_executor"
+    )
+
+
+def test_route_after_tool_validation_without_call_retries_decision() -> None:
+    state: AgentState = {
+        "error": None,
+        "pending_tool_call": None,
+    }
+
+    assert (
+        route_after_tool_validation(state)
+        == "tool_decision"
+    )
+
+
+def test_route_after_result_check_sends_error_to_reporter() -> None:
+    state: AgentState = {
+        "error": "工具执行失败",
+        "needs_more_tools": True,
+    }
+
+    assert (
+        route_after_result_check(state)
+        == "reporter"
+    )
+
+
+def test_route_after_result_check_continues_when_more_tools_needed() -> None:
+    state: AgentState = {
+        "error": None,
+        "needs_more_tools": True,
+    }
+
+    assert (
+        route_after_result_check(state)
+        == "tool_decision"
+    )
+
+
+def test_route_after_result_check_finishes_when_no_more_tools_needed() -> None:
+    state: AgentState = {
+        "error": None,
+        "needs_more_tools": False,
+    }
+
+    assert (
+        route_after_result_check(state)
+        == "reporter"
+    )
 
 def test_initial_state_fields_are_preserved(
     monkeypatch: pytest.MonkeyPatch,

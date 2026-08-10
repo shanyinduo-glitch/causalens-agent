@@ -18,7 +18,6 @@ TaskType = Literal[
 
 WorkflowStatus = Literal[
     "initialized",
-    "routing",
     "planning",
     "tool_decision",
     "tool_validation",

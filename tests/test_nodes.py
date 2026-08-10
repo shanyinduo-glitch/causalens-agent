@@ -7,6 +7,8 @@ from causalens.agent.nodes import (
     planner_node,
     reporter_node,
     tool_decision_node,
+    tool_validator_node,
+    result_checker_node,
 )
 from causalens.agent.state import AgentState, TaskType
 from types import SimpleNamespace
@@ -63,7 +65,7 @@ def test_intent_router_node(
 
     state: AgentState = {
         "question": question,
-        "workflow_status": "routing",
+        "workflow_status": "initialized",
     }
 
     result = intent_router_node(state)
@@ -642,3 +644,93 @@ def test_reporter_appends_missing_scatter_evidence(
     assert "因果" in answer
     assert "3.0 至 18.0" in answer
     assert "52.0 至 98.0" in answer
+
+
+def test_tool_validator_stops_after_max_retries() -> None:
+    """
+    工具参数连续验证失败达到上限后，
+    应停止重新生成并进入 Reporter。
+    """
+
+    state: AgentState = {
+        "pending_tool_call": {
+            "name": "retrieve_docs",
+            "arguments": {
+                "query": "",
+            },
+        },
+        "validation_retry_count": 1,
+        "max_validation_retries": 2,
+    }
+
+    result = tool_validator_node(state)
+
+    assert result["pending_tool_call"] is None
+    assert result["validation_retry_count"] == 2
+    assert result["workflow_status"] == "reporting"
+    assert result["error"] is not None
+    assert result["validation_error"]
+
+def test_result_checker_stops_at_max_steps() -> None:
+    """
+    达到最大工具步数且仍有工具未完成时，
+    应停止 Tool Loop 并进入 Reporter。
+    """
+
+    state: AgentState = {
+        "question": (
+            "请解释 passed 字段含义，"
+            "并统计不同 passed 值的平均 score。"
+        ),
+        "task_type": "mixed_analysis",
+        "required_tools": [
+            "retrieve_docs",
+            "run_readonly_sql",
+        ],
+        "tool_results": [
+            {
+                "tool_name": "retrieve_docs",
+                "success": True,
+                "result": {
+                    "query": "passed 字段是什么意思？",
+                    "results": [],
+                },
+                "error": None,
+            }
+        ],
+        "step_count": 2,
+        "max_steps": 2,
+        "error": None,
+    }
+
+    result = result_checker_node(state)
+
+    assert result["needs_more_tools"] is False
+    assert result["workflow_status"] == "reporting"
+    assert result["error"] is not None
+    assert "最大工具步数 2" in result["error"]
+    assert "run_readonly_sql" in result["error"]
+
+
+def test_tool_validator_rejects_unknown_tool() -> None:
+    """
+    Validator 应拒绝未注册的工具名称，
+    防止非法工具调用进入 executor。
+    """
+
+    state: AgentState = {
+        "pending_tool_call": {
+            "name": "not_a_real_tool",
+            "arguments": {},
+        },
+        "validation_retry_count": 0,
+        "max_validation_retries": 2,
+    }
+
+    result = tool_validator_node(state)
+
+    assert result["pending_tool_call"] is None
+    assert result["validation_retry_count"] == 1
+    assert result["workflow_status"] == "tool_decision"
+    assert result["error"] is None
+    assert "未知工具" in result["validation_error"]

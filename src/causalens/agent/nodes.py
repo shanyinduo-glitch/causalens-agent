@@ -1788,6 +1788,9 @@ def _validate_pending_tool_call(
     if not isinstance(arguments, dict):
         return ["工具 arguments 必须是字典。"]
 
+    if tool_name not in TOOL_REGISTRY:
+        return [f"未知工具：{tool_name}。"]
+
     question = state.get("question", "")
 
     if tool_name == "run_readonly_sql":

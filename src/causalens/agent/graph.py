@@ -117,50 +117,6 @@ def route_after_planner(
     )
     return "tool_decision"
 
-def route_after_causal_readiness(
-    state: AgentState,
-) -> Literal[
-    "causal_execution",
-    "end",
-]:
-    """
-    readiness 通过且已确认时执行 DML；
-    其余情况结束本轮 Graph。
-    """
-
-    readiness = state.get(
-        "causal_readiness",
-        {},
-    )
-    approved = state.get("approved")
-    workflow_status = state.get(
-        "workflow_status"
-    )
-
-    print(
-        "\n[route_after_causal_readiness] "
-        "正在判断 readiness 后的下一步"
-    )
-
-    if (
-        isinstance(readiness, dict)
-        and readiness.get("ready") is True
-        and approved is True
-        and workflow_status
-        == "causal_execution"
-    ):
-        print(
-            "[route_after_causal_readiness] "
-            "准备度通过且已确认，"
-            "进入 causal_execution"
-        )
-        return "causal_execution"
-
-    print(
-        "[route_after_causal_readiness] "
-        "当前不执行 DML，结束本轮 Graph"
-    )
-    return "end"
 
 def route_after_tool_decision(
     state: AgentState,
