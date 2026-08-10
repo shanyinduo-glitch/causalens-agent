@@ -47,6 +47,11 @@ DOC_INTENT_KEYWORDS = [
     "归一化",
     "缺失值如何处理",
     "缺失值处理",
+    "数据字典",
+    "真实采集",
+    "具体代表什么",
+    "模拟数据",
+    "字段的定义",
 ]
 
 PROFILE_INTENT_KEYWORDS = [
@@ -57,6 +62,10 @@ PROFILE_INTENT_KEYWORDS = [
     "字段类型",
     "缺失值数量",
     "缺失值有多少",
+    "字段类型",
+    "缺失值",
+    "有哪些列",
+    "整体结构",
 ]
 
 SQL_INTENT_KEYWORDS = [
@@ -90,15 +99,21 @@ CORRELATION_INTENT_KEYWORDS = (
     "相关",
     "相关性",
     "相关系数",
+    "线性关联",
     "pearson",
     "spearman",
 )
 
 GROUP_COMPARISON_INTENT_KEYWORDS = (
     "显著差异",
+    "差异显著",
     "是否有差异",
     "组间差异",
     "均值差异",
+    "统计学差异",
+    "统计学上的差异",
+    "统计学差别",
+    "统计学上的差别",
     "t 检验",
     "t检验",
     "t-test",
@@ -414,9 +429,47 @@ def _infer_statistical_tool_name(
     """
     normalized_question = question.strip().lower()
 
-    if any(
+    normalized_question = question.strip().lower()
+
+    has_explicit_ols_intent = any(
         keyword in normalized_question
         for keyword in OLS_INTENT_KEYWORDS
+    )
+
+    has_considering_context = (
+            "考虑" in normalized_question
+            and any(
+        marker in normalized_question
+        for marker in (
+            "情况下",
+            "条件下",
+        )
+    )
+            and any(
+        marker in normalized_question
+        for marker in (
+            "关系",
+            "关联",
+        )
+    )
+    )
+
+    has_holding_constant_context = (
+            "保持" in normalized_question
+            and "不变" in normalized_question
+            and any(
+        marker in normalized_question
+        for marker in (
+            "关系",
+            "关联",
+        )
+    )
+    )
+
+    if (
+            has_explicit_ols_intent
+            or has_considering_context
+            or has_holding_constant_context
     ):
         return "run_ols"
 

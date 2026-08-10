@@ -1,0 +1,62 @@
+{
+  "suite_name": "CausaLens Causal Evaluation",
+  "version": "1.0",
+  "dataset_path": "data/synthetic_causal_data.csv",
+  "description": "验证 CausaLens 因果分析工作流的路由、准备度检查、人工确认和执行安全边界。",
+  "cases": [
+    {
+      "id": "causal_01_awaiting_approval",
+      "category": "causal_analysis",
+      "question": "请估计 ad_exposure 对 retention_score 的因果效应，控制 age、log_income、historical_activity、channel_score。",
+      "expected_task_type": "causal_analysis",
+      "expected_analysis_method": "linear_dml",
+      "expected_workflow_status": "awaiting_approval",
+      "expected_tool_order": [
+        "check_causal_readiness"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "causal_02_approved_execution",
+      "category": "causal_analysis",
+      "question": "请估计 ad_exposure 对 retention_score 的因果效应，控制 age、log_income、historical_activity、channel_score。",
+      "approved": true,
+      "expected_task_type": "causal_analysis",
+      "expected_analysis_method": "linear_dml",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "check_causal_readiness",
+        "run_dml"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "causal_03_invalid_configuration_failed",
+      "category": "causal_analysis",
+      "question": "请估计 ad_exposure 对 retention_score 的因果效应，控制 age、invalid_test_123。",
+      "approved": true,
+      "expected_task_type": "causal_analysis",
+      "expected_analysis_method": "linear_dml",
+      "expected_workflow_status": "failed",
+      "expected_tool_order": [],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "causal_04_nonbinary_treatment_blocked",
+      "category": "causal_analysis",
+      "question": "请估计 age 对 retention_score 的因果效应，控制 log_income、historical_activity、channel_score。",
+      "approved": true,
+      "expected_task_type": "causal_analysis",
+      "expected_analysis_method": "linear_dml",
+      "expected_workflow_status": "blocked",
+      "expected_tool_order": [
+        "check_causal_readiness"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    }
+  ]
+}

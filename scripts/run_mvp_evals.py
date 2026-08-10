@@ -257,9 +257,20 @@ def run_eval_case(
     question = str(
         case.get("question", "")
     )
+    approved = case.get("approved")
+    if (
+            approved is not None
+            and not isinstance(approved, bool)
+    ):
+        raise ValueError(
+            f"{case_id} 的 approved 必须是布尔值或 null。"
+        )
 
     expected_task_type = case.get(
         "expected_task_type"
+    )
+    expected_analysis_method = case.get(
+        "expected_analysis_method"
     )
     expected_workflow_status = case.get(
         "expected_workflow_status"
@@ -358,6 +369,7 @@ def run_eval_case(
             dataset_path=str(dataset_path),
             question=question,
             max_steps=max_steps,
+            approved=approved,
         )
 
         duration_seconds = round(
@@ -367,6 +379,9 @@ def run_eval_case(
 
         actual_task_type = final_state.get(
             "task_type"
+        )
+        actual_analysis_method = final_state.get(
+            "analysis_method"
         )
         actual_workflow_status = final_state.get(
             "workflow_status"
@@ -418,6 +433,12 @@ def run_eval_case(
             ),
         }
 
+        if expected_analysis_method is not None:
+            checks["analysis_method_matches"] = (
+                    actual_analysis_method
+                    == expected_analysis_method
+            )
+
         passed = all(checks.values())
 
         return {
@@ -428,6 +449,7 @@ def run_eval_case(
             "duration_seconds": duration_seconds,
             "expected": {
                 "task_type": expected_task_type,
+                "analysis_method": expected_analysis_method,
                 "workflow_status": (
                     expected_workflow_status
                 ),
@@ -444,6 +466,7 @@ def run_eval_case(
             },
             "actual": {
                 "task_type": actual_task_type,
+                "analysis_method": actual_analysis_method,
                 "workflow_status": (
                     actual_workflow_status
                 ),
@@ -484,6 +507,7 @@ def run_eval_case(
             "duration_seconds": duration_seconds,
             "expected": {
                 "task_type": expected_task_type,
+                "analysis_method": actual_analysis_method,
                 "workflow_status": (
                     expected_workflow_status
                 ),
@@ -500,6 +524,7 @@ def run_eval_case(
             },
             "actual": {
                 "task_type": None,
+                "analysis_method": None,
                 "workflow_status": None,
                 "tool_order": [],
                 "final_answer": "",
@@ -621,6 +646,65 @@ def print_case_result(
             f"{result['execution_error']}"
         )
 
+def build_quality_metrics(
+    results: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """
+    汇总 Agent 核心行为层面的评测指标。
+
+    只统计实际存在该 check 的案例。
+    例如 analysis_method_matches 只在声明了
+    expected_analysis_method 的案例中参与统计。
+    """
+
+    metric_to_check = {
+        "routing_accuracy": "task_type_matches",
+        "workflow_accuracy": "workflow_status_matches",
+        "tool_selection_accuracy": "tool_order_matches",
+        "analysis_method_accuracy": (
+            "analysis_method_matches"
+        ),
+    }
+
+    metrics: dict[str, dict[str, Any]] = {}
+
+    for metric_name, check_name in (
+        metric_to_check.items()
+    ):
+        relevant_results = [
+            result
+            for result in results
+            if check_name
+            in result.get("checks", {})
+        ]
+
+        passed = sum(
+            bool(
+                result["checks"][check_name]
+            )
+            for result in relevant_results
+        )
+
+        total = len(relevant_results)
+
+        accuracy = round(
+            (
+                passed
+                / total
+                * 100
+            )
+            if total
+            else 0.0,
+            2,
+        )
+
+        metrics[metric_name] = {
+            "passed": passed,
+            "total": total,
+            "accuracy": accuracy,
+        }
+
+    return metrics
 
 def build_markdown_summary(
     report: dict[str, Any],
@@ -641,8 +725,6 @@ def build_markdown_summary(
         f"- Failed: {report['failed_cases']}",
         f"- Pass rate: {report['pass_rate']}%",
         "",
-        "## Case Results",
-        "",
         (
             "| Case | Category | Result | "
             "Task type | Tool order | Duration |"
@@ -651,6 +733,37 @@ def build_markdown_summary(
             "|---|---|---:|---|---|---:|"
         ),
     ]
+
+    lines.extend(
+        [
+            "",
+            "## Category Results",
+            "",
+            "| Category | Passed | Total | Pass rate |",
+            "|---|---:|---:|---:|",
+        ]
+    )
+
+    for category, stats in sorted(
+            report.get(
+                "category_stats",
+                {},
+            ).items()
+    ):
+        lines.append(
+            f"| {category} "
+            f"| {stats['passed']} "
+            f"| {stats['total']} "
+            f"| {stats['pass_rate']}% |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Case Results",
+            "",
+        ]
+    )
 
     for result in report["results"]:
         status = (
@@ -731,6 +844,7 @@ def build_markdown_summary(
 def save_report(
     report: dict[str, Any],
     output_dir: Path,
+    report_stem: str,
 ) -> tuple[Path, Path]:
     """
     保存 JSON 明细和 Markdown 汇总。
@@ -742,12 +856,13 @@ def save_report(
     )
 
     results_path = (
-        output_dir
-        / "latest_results.json"
+            output_dir
+            / f"{report_stem}_results.json"
     )
+
     summary_path = (
-        output_dir
-        / "latest_summary.md"
+            output_dir
+            / f"{report_stem}_summary.md"
     )
 
     results_path.write_text(
@@ -876,6 +991,44 @@ def main() -> int:
         2,
     )
 
+    category_stats: dict[str, dict[str, Any]] = {}
+
+    for result in results:
+        category = str(
+            result.get("category", "unknown")
+        )
+
+        if category not in category_stats:
+            category_stats[category] = {
+                "total": 0,
+                "passed": 0,
+                "failed": 0,
+                "pass_rate": 0.0,
+            }
+
+        category_stats[category]["total"] += 1
+
+        if result["passed"]:
+            category_stats[category]["passed"] += 1
+        else:
+            category_stats[category]["failed"] += 1
+
+    for stats in category_stats.values():
+        stats["pass_rate"] = round(
+            (
+                    stats["passed"]
+                    / stats["total"]
+                    * 100
+            )
+            if stats["total"]
+            else 0.0,
+            2,
+        )
+
+    quality_metrics = build_quality_metrics(
+        results
+    )
+
     report = {
         "suite_name": suite.get(
             "suite_name"
@@ -900,12 +1053,20 @@ def main() -> int:
         "passed_cases": passed_cases,
         "failed_cases": failed_cases,
         "pass_rate": pass_rate,
+        "category_stats": category_stats,
+        "quality_metrics": quality_metrics,
         "results": results,
     }
+
+    report_stem = (
+        args.cases_path.stem
+        .removesuffix("_cases")
+    )
 
     results_path, summary_path = save_report(
         report,
         output_dir,
+        report_stem,
     )
 
     print(
@@ -915,6 +1076,28 @@ def main() -> int:
     print(f"Passed: {passed_cases}")
     print(f"Failed: {failed_cases}")
     print(f"Pass rate: {pass_rate}%")
+    print("\nCategory Results:")
+
+    for category, stats in sorted(
+            category_stats.items()
+    ):
+        print(
+            f"  {category}: "
+            f"{stats['passed']}/{stats['total']} "
+            f"({stats['pass_rate']}%)"
+        )
+
+    print("\nQuality Metrics:")
+
+    for metric_name, stats in (
+            quality_metrics.items()
+    ):
+        print(
+            f"  {metric_name}: "
+            f"{stats['passed']}/{stats['total']} "
+            f"({stats['accuracy']}%)"
+        )
+
     print(
         f"JSON report: {results_path}"
     )

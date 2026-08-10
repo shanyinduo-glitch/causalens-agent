@@ -7,8 +7,8 @@ from causalens.agent.tool_registry import TOOLS
 
 
 DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-DEFAULT_MODEL_NAME = "qwen3.7-flash-2026-07-15"
-
+#DEFAULT_MODEL_NAME = "qwen3.7-flash-2026-07-15"
+DEFAULT_MODEL_NAME = "qwen3.7-flash"
 
 def get_qwen_client() -> OpenAI:
     """创建并返回千问 OpenAI 兼容客户端。"""

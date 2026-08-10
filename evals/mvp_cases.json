@@ -212,6 +212,401 @@
         "DELETE FROM",
         "删除成功"
       ]
+    },
+    {
+      "id": "mvp_11_stat_correlation",
+      "category": "statistical_analysis",
+      "question": "study_hours 和 score 是否相关？",
+      "expected_task_type": "statistical_analysis",
+      "expected_analysis_method": "run_correlation",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_correlation"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_12_stat_group_comparison",
+      "category": "statistical_analysis",
+      "question": "不同 major 的 score 是否存在显著差异？",
+      "expected_task_type": "statistical_analysis",
+      "expected_analysis_method": "run_group_comparison",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_group_comparison"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_13_stat_ols",
+      "category": "statistical_analysis",
+      "question": "控制 attendance_rate 后，study_hours 与 score 有什么关系？",
+      "expected_task_type": "statistical_analysis",
+      "expected_analysis_method": "run_ols",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_ols"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_14_stat_correlation_paraphrase",
+      "category": "statistical_analysis",
+      "question": "study_hours 越高时 score 通常也越高吗？二者的相关程度如何？",
+      "expected_task_type": "statistical_analysis",
+      "expected_analysis_method": "run_correlation",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_correlation"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_15_stat_group_comparison_paraphrase",
+      "category": "statistical_analysis",
+      "question": "major 不同的学生，其 score 的平均水平是否存在统计学上的差别？",
+      "expected_task_type": "statistical_analysis",
+      "expected_analysis_method": "run_group_comparison",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_group_comparison"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_16_stat_ols_paraphrase",
+      "category": "statistical_analysis",
+      "question": "在考虑 attendance_rate 的情况下，study_hours 与 score 的关系如何？",
+      "expected_task_type": "statistical_analysis",
+      "expected_analysis_method": "run_ols",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_ols"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_17_data_profile_paraphrase",
+      "category": "data_profile",
+      "question": "帮我快速看看这份数据有哪些列，以及整体结构是什么样的。",
+      "expected_task_type": "data_profile",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "profile_dataset"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_18_rag_dataset_source",
+      "category": "rag_question",
+      "question": "这份 student_performance 数据是真实采集的吗？",
+      "expected_task_type": "rag_question",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "retrieve_docs"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_19_rag_passed_paraphrase",
+      "category": "rag_question",
+      "question": "数据字典里 passed 这一列具体代表什么？",
+      "expected_task_type": "rag_question",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "retrieve_docs"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_20_sql_city_mean",
+      "category": "sql_analysis",
+      "question": "按 city 分组计算平均 score。",
+      "expected_task_type": "sql_analysis",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_readonly_sql"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_21_sql_high_score_count",
+      "category": "sql_analysis",
+      "question": "score 大于 80 的学生有多少个？",
+      "expected_task_type": "sql_analysis",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_readonly_sql"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_22_chart_major_bar",
+      "category": "chart_analysis",
+      "question": "用柱状图展示各个 major 的学生数量。",
+      "expected_task_type": "chart_analysis",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "create_chart"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_23_chart_attendance_histogram",
+      "category": "chart_analysis",
+      "question": "我想看看 attendance_rate 的分布，帮我可视化一下。",
+      "expected_task_type": "chart_analysis",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "create_chart"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_24_stat_correlation_paraphrase_2",
+      "category": "statistical_analysis",
+      "question": "attendance_rate 和 score 之间的线性关联强不强？",
+      "expected_task_type": "statistical_analysis",
+      "expected_analysis_method": "run_correlation",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_correlation"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_25_stat_group_comparison_paraphrase_2",
+      "category": "statistical_analysis",
+      "question": "不同 passed 组的 score 是否有显著差异？",
+      "expected_task_type": "statistical_analysis",
+      "expected_analysis_method": "run_group_comparison",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_group_comparison"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_26_unsupported_modify",
+      "category": "unsupported",
+      "question": "把所有学生的 score 都增加 5 分并保存回 CSV。",
+      "expected_task_type": "unsupported",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_27_data_profile_shape",
+      "category": "data_profile",
+      "question": "这份表一共有多少行、多少列？",
+      "expected_task_type": "data_profile",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "profile_dataset"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_28_data_profile_missing",
+      "category": "data_profile",
+      "question": "帮我检查一下各字段的类型和缺失值情况。",
+      "expected_task_type": "data_profile",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "profile_dataset"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_29_rag_exam_date",
+      "category": "rag_question",
+      "question": "数据字典里 exam_date 这个字段的含义是什么？",
+      "expected_task_type": "rag_question",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "retrieve_docs"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_30_rag_simulated_data",
+      "category": "rag_question",
+      "question": "这份数据是模拟数据吗？可以把它当作真实研究证据吗？",
+      "expected_task_type": "rag_question",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "retrieve_docs"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_31_sql_city_count",
+      "category": "sql_analysis",
+      "question": "每个 city 分别有多少个学生？",
+      "expected_task_type": "sql_analysis",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_readonly_sql"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_32_sql_top_scores",
+      "category": "sql_analysis",
+      "question": "score 最高的 5 名学生是谁？",
+      "expected_task_type": "sql_analysis",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_readonly_sql"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_33_chart_attendance_scatter",
+      "category": "chart_analysis",
+      "question": "画一张 attendance_rate 和 score 的散点图。",
+      "expected_task_type": "chart_analysis",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "create_chart"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_34_chart_major_count",
+      "category": "chart_analysis",
+      "question": "请用柱状图展示 major 分类数量。",
+      "expected_task_type": "chart_analysis",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "create_chart"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_35_stat_spearman",
+      "category": "statistical_analysis",
+      "question": "请用 Spearman 方法分析 attendance_rate 和 score 的相关性。",
+      "expected_task_type": "statistical_analysis",
+      "expected_analysis_method": "run_correlation",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_correlation"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_36_stat_pearson",
+      "category": "statistical_analysis",
+      "question": "请计算 study_hours 和 score 的 Pearson 相关系数。",
+      "expected_task_type": "statistical_analysis",
+      "expected_analysis_method": "run_correlation",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_correlation"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_37_stat_group_difference",
+      "category": "statistical_analysis",
+      "question": "不同 major 之间的 score 差异显著吗？",
+      "expected_task_type": "statistical_analysis",
+      "expected_analysis_method": "run_group_comparison",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_group_comparison"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_38_stat_anova",
+      "category": "statistical_analysis",
+      "question": "请用 ANOVA 比较不同 major 的 score。",
+      "expected_task_type": "statistical_analysis",
+      "expected_analysis_method": "run_group_comparison",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_group_comparison"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_39_stat_ols_explicit",
+      "category": "statistical_analysis",
+      "question": "对 score 做回归分析，以 study_hours 为解释变量，并控制 attendance_rate。",
+      "expected_task_type": "statistical_analysis",
+      "expected_analysis_method": "run_ols",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_ols"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_40_stat_ols_paraphrase_3",
+      "category": "statistical_analysis",
+      "question": "保持 attendance_rate 不变时，study_hours 与 score 的关系如何？",
+      "expected_task_type": "statistical_analysis",
+      "expected_analysis_method": "run_ols",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "run_ols"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_41_mixed_rag_sql_count",
+      "category": "mixed_analysis",
+      "question": "先解释 passed 字段的定义，再统计不同 passed 值分别有多少个学生。",
+      "expected_task_type": "mixed_analysis",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [
+        "retrieve_docs",
+        "run_readonly_sql"
+      ],
+      "answer_must_include": [],
+      "answer_must_not_include": []
+    },
+    {
+      "id": "mvp_42_unsupported_overwrite",
+      "category": "unsupported",
+      "question": "请把 score 列改名为 grade，并覆盖保存原来的 CSV 文件。",
+      "expected_task_type": "unsupported",
+      "expected_workflow_status": "completed",
+      "expected_tool_order": [],
+      "answer_must_include": [],
+      "answer_must_not_include": []
     }
   ]
 }

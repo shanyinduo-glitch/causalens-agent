@@ -2,23 +2,90 @@
   "suite_name": "CausaLens MVP Evaluation",
   "version": "1.0",
   "description": "验证 CausaLens Agent 在正式 LangGraph 工作流下的路由、工具选择、执行顺序、回答证据和安全边界。",
-  "generated_at": "2026-07-30T15:49:35",
+  "generated_at": "2026-08-11T00:06:18",
   "cases_path": "evals\\mvp_cases.json",
   "dataset_path": "data/student_performance.csv",
   "max_steps": 5,
-  "total_cases": 10,
-  "passed_cases": 10,
+  "total_cases": 42,
+  "passed_cases": 42,
   "failed_cases": 0,
   "pass_rate": 100.0,
+  "category_stats": {
+    "data_profile": {
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "pass_rate": 100.0
+    },
+    "rag_question": {
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "pass_rate": 100.0
+    },
+    "sql_analysis": {
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "pass_rate": 100.0
+    },
+    "chart_analysis": {
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "pass_rate": 100.0
+    },
+    "mixed_analysis": {
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "pass_rate": 100.0
+    },
+    "unsupported": {
+      "total": 3,
+      "passed": 3,
+      "failed": 0,
+      "pass_rate": 100.0
+    },
+    "statistical_analysis": {
+      "total": 14,
+      "passed": 14,
+      "failed": 0,
+      "pass_rate": 100.0
+    }
+  },
+  "quality_metrics": {
+    "routing_accuracy": {
+      "passed": 42,
+      "total": 42,
+      "accuracy": 100.0
+    },
+    "workflow_accuracy": {
+      "passed": 42,
+      "total": 42,
+      "accuracy": 100.0
+    },
+    "tool_selection_accuracy": {
+      "passed": 42,
+      "total": 42,
+      "accuracy": 100.0
+    },
+    "analysis_method_accuracy": {
+      "passed": 14,
+      "total": 14,
+      "accuracy": 100.0
+    }
+  },
   "results": [
     {
       "id": "mvp_01_data_profile",
       "category": "data_profile",
       "question": "这个数据集有哪些字段？",
       "passed": true,
-      "duration_seconds": 6.0839,
+      "duration_seconds": 9.6445,
       "expected": {
         "task_type": "data_profile",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "profile_dataset"
@@ -38,11 +105,12 @@
       },
       "actual": {
         "task_type": "data_profile",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "profile_dataset"
         ],
-        "final_answer": "该数据集包含以下字段：\n`student_id`、`major`、`city`、`study_hours`、`attendance_rate`、`score`、`passed`、`exam_date`。",
+        "final_answer": "根据工具返回结果，该数据集包含以下8个字段：\n- `student_id`\n- `major`\n- `city`\n- `study_hours`\n- `attendance_rate`\n- `score`\n- `passed`\n- `exam_date`\n\n（该数据集共40行记录，所有字段均无缺失值。）",
         "step_count": 1,
         "error": null
       },
@@ -66,9 +134,10 @@
       "category": "rag_question",
       "question": "passed 字段是什么意思？",
       "passed": true,
-      "duration_seconds": 31.1095,
+      "duration_seconds": 29.1793,
       "expected": {
         "task_type": "rag_question",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "retrieve_docs"
@@ -87,11 +156,12 @@
       },
       "actual": {
         "task_type": "rag_question",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "retrieve_docs"
         ],
-        "final_answer": "根据检索到的项目知识库文档（来源：`data_dictionary.md`，章节：`passed`），`passed` 字段的含义如下：\n\n- **中文名称**：是否通过考试\n- **数据类型**：二元变量（binary）\n- **取值含义**：`1` 表示通过考试，`0` 表示未通过考试。\n- **重要提示**：当前文档仅定义了该字段的二元标签含义，**并未规定具体的通过分数线**。文档明确指出不能自行推断通过阈值，如需了解具体评分标准，需依赖其他明确提供该规则的文档。",
+        "final_answer": "根据项目知识库 `data_dictionary.md`（Section: passed）的文档记录，`passed` 字段的含义如下：\n\n- **中文名称**：是否通过考试\n- **字段含义**：用于标记学生是否通过了考试。\n- **数据类型与取值**：二元变量（binary），其中 `1` 表示通过考试，`0` 表示未通过考试。\n- **补充说明**：当前文档仅明确了该字段的标签定义，未规定具体的通过分数线或评分阈值。依据现有证据，无法确认“多少分算通过”的具体标准。",
         "step_count": 1,
         "error": null
       },
@@ -115,9 +185,10 @@
       "category": "rag_question",
       "question": "study_hours 的单位是什么？",
       "passed": true,
-      "duration_seconds": 15.8538,
+      "duration_seconds": 17.0761,
       "expected": {
         "task_type": "rag_question",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "retrieve_docs"
@@ -131,11 +202,12 @@
       },
       "actual": {
         "task_type": "rag_question",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "retrieve_docs"
         ],
-        "final_answer": "根据检索到的项目文档（`data_dictionary.md`，`study_hours` 章节），`study_hours` 的单位为**小时/周**（hours per week）。",
+        "final_answer": "根据文档 `data_dictionary.md` 中关于 `study_hours` 的定义，其单位为 **小时/周** (hours per week)。",
         "step_count": 1,
         "error": null
       },
@@ -159,9 +231,10 @@
       "category": "sql_analysis",
       "question": "不同专业的平均 score 分别是多少？",
       "passed": true,
-      "duration_seconds": 14.358,
+      "duration_seconds": 15.7032,
       "expected": {
         "task_type": "sql_analysis",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "run_readonly_sql"
@@ -179,11 +252,12 @@
       },
       "actual": {
         "task_type": "sql_analysis",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "run_readonly_sql"
         ],
-        "final_answer": "根据工具返回的SQL查询结果，不同专业的平均分数分别为：\n- **cs**：81.23076923076923\n- **math**：79.57142857142857\n- **stats**：74.6923076923077",
+        "final_answer": "根据 SQL 查询结果，不同专业的平均分数如下：\n- **math**：79.57\n- **stats**：74.69\n- **cs**：81.23\n\n（注：为便于阅读已保留两位小数，完整精度数值与工具返回的 `avg_score` 字段完全一致。）",
         "step_count": 1,
         "error": null
       },
@@ -207,9 +281,10 @@
       "category": "chart_analysis",
       "question": "请画出 score 的分布图。",
       "passed": true,
-      "duration_seconds": 11.4193,
+      "duration_seconds": 15.3169,
       "expected": {
         "task_type": "chart_analysis",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "create_chart"
@@ -232,11 +307,12 @@
       },
       "actual": {
         "task_type": "chart_analysis",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "create_chart"
         ],
-        "final_answer": "已为您生成 `score` 字段的分布直方图，图表保存路径为：\n`outputs/charts/distribution_of_scores_20260730_154758_423009.png`\n\n根据工具返回的实际结果，该分布包含以下核心统计信息：\n- **样本数量（count）**：40\n- **平均数（mean）**：78.525\n- **中位数（median）**：79.5\n- **取值范围**：最小值 52.0，最大值 98.0\n\n（注：依据工具返回的数据范围，当前仅能提供上述基础统计量及实际边界值。因未提供标准差、四分位数、偏度或分组频数等分布形态指标，故不对分布的对称性、峰值区间或集中程度进行主观判断。）",
+        "final_answer": "已为您生成 `score` 字段的分布直方图。\n\n📊 **图表路径**：`outputs/charts/distribution_of_score_20260810_235559_119556.png`\n\n📈 **数据摘要**（基于当前 40 条记录）：\n- **取值范围**：52.0 ~ 98.0\n- **均值（mean）**：78.525\n- **中位数（median）**：79.5\n- **样本量（count）**：40\n\n（注：工具仅返回了 count、mean、median、min 和 max 基础统计量。严格遵循证据规则，此处仅陈述上述实际数值与范围，未进行偏态、峰度或分布形态推断。）",
         "step_count": 1,
         "error": null
       },
@@ -260,9 +336,10 @@
       "category": "chart_analysis",
       "question": "请画出 study_hours 和 score 的散点图。",
       "passed": true,
-      "duration_seconds": 11.7059,
+      "duration_seconds": 11.5599,
       "expected": {
         "task_type": "chart_analysis",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "create_chart"
@@ -284,11 +361,12 @@
       },
       "actual": {
         "task_type": "chart_analysis",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "create_chart"
         ],
-        "final_answer": "已为您生成 `study_hours` 与 `score` 的散点图，图表文件路径如下：\n`outputs/charts/scatter_plot_of_study_hours_vs_score_20260730_154810_996245.png`\n\n**图表数据统计摘要：**\n- 数据点数量：40个\n- `study_hours`（横轴）取值范围：3.0 ~ 18.0\n- `score`（纵轴）取值范围：52.0 ~ 98.0\n- Pearson 相关系数：0.9874，表示在当前样本中两个变量之间存在明显的正向线性关联。\n\n⚠️ **提示**：该分析仅反映当前数据样本中的统计相关关系，相关性不能证明因果关系。",
+        "final_answer": "已成功绘制 `study_hours` 与 `score` 的散点图，图表保存路径为：`outputs/charts/score_vs_study_hours_20260810_235614_276296.png`。\n\n根据工具返回的数据与关系摘要，图表主要反映以下信息：\n- **数据规模**：共绘制 40 个观测点。\n- **变量范围**：横轴 `study_hours` 取值为 3.0 至 18.0；纵轴 `score` 取值为 52.0 至 98.0。\n- **关联特征**：两变量的 Pearson 相关系数为 0.9874。在当前样本中，表明 `study_hours` 与 `score` 存在极强的正向线性关联。\n- **统计提示**：相关性仅反映样本内的数值联动模式，不能证明因果关系。若需验证因果效应，需依赖更严谨的因果识别设计与假设检验。",
         "step_count": 1,
         "error": null
       },
@@ -312,9 +390,10 @@
       "category": "mixed_analysis",
       "question": "请解释 passed 字段含义，并统计不同 passed 值的平均 score。",
       "passed": true,
-      "duration_seconds": 26.6462,
+      "duration_seconds": 28.4167,
       "expected": {
         "task_type": "mixed_analysis",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "retrieve_docs",
@@ -341,12 +420,13 @@
       },
       "actual": {
         "task_type": "mixed_analysis",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "retrieve_docs",
           "run_readonly_sql"
         ],
-        "final_answer": "根据工具返回结果，回答如下：\n\n**1. `passed` 字段含义**\n依据 `data_dictionary.md`（章节：`passed`）的说明：\n- `passed` 表示**“是否通过考试”**，为二元变量。\n- `1` 代表通过考试，`0` 代表未通过考试。\n- （注：当前数据字典仅定义了标签含义，未明确具体的通过分数线，故不作进一步推断。）\n\n**2. 不同 `passed` 值的平均 `score`**\n根据 `run_readonly_sql` 查询结果，各组的平均分数（`avg_score`）为：\n- 当 `passed = 0`（未通过）时，平均分数约为 **62.09**\n- 当 `passed = 1`（通过）时，平均分数约为 **84.76**",
+        "final_answer": "根据工具返回结果，回答如下：\n\n**1. `passed` 字段含义**\n依据 `knowledge\\data_dictionary.md`（section: `passed`）的文档说明：\n- `passed` 表示“是否通过考试”。\n- 数据类型为二元变量（binary）：`1` 代表通过考试，`0` 代表未通过考试。\n- （注：当前文档仅定义了标签含义，未明确给出具体的分数通过阈值。）\n\n**2. 不同 `passed` 值的平均 `score` 统计**\n依据 `run_readonly_sql` 的实际查询结果：\n- `passed = 0`（未通过）：平均分为 **62.09**\n- `passed = 1`（通过）：平均分为 **84.76**",
         "step_count": 2,
         "error": null
       },
@@ -370,9 +450,10 @@
       "category": "mixed_analysis",
       "question": "请说明 study_hours 的单位，并画出 study_hours 和 score 的散点图。",
       "passed": true,
-      "duration_seconds": 28.4784,
+      "duration_seconds": 33.8272,
       "expected": {
         "task_type": "mixed_analysis",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "retrieve_docs",
@@ -393,12 +474,13 @@
       },
       "actual": {
         "task_type": "mixed_analysis",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "retrieve_docs",
           "create_chart"
         ],
-        "final_answer": "根据工具返回结果，回答如下：\n\n**1. `study_hours` 的单位**\n`study_hours` 的单位为**小时/周**（hours per week）。\n*依据来源：`knowledge\\data_dictionary.md`，section: `study_hours`*\n\n**2. `study_hours` 与 `score` 的散点图**\n已生成散点图，保存路径为：\n`outputs/charts/score_vs_study_hours_20260730_154901_850427.png`\n\n**图表数据特征：**\n- 绘制数据点数量：40 个\n- 横轴 `study_hours` 取值范围：3.0 ~ 18.0\n- 纵轴 `score` 取值范围：52.0 ~ 98.0\n- Pearson 相关系数：0.9874\n\n在当前样本中，`study_hours` 与 `score` 呈现明显的正向线性关联。需明确提醒：**相关性不能证明因果关系**，该统计结果仅反映本批次数据中两个变量的同步变化趋势，不表示学习时长对成绩具有直接的因果影响。",
+        "final_answer": "根据 `data_dictionary.md` 文件（section: study_hours）的记录，`study_hours` 字段的单位为**小时/周**。\n\n已为您生成 `study_hours` 与 `score` 的散点图，图表路径为：`outputs/charts/study_hours_vs_score_20260810_235710_379503.png`。\n\n根据图表工具的统计摘要，该图共绘制了 **40** 个数据点。横轴 `study_hours` 的取值范围为 **3.0 至 18.0**，纵轴 `score` 的取值范围为 **52.0 至 98.0**，两者的 Pearson 相关系数为 **0.9874**。这表明在您当前使用的样本中，两个变量存在正向线性关联。需明确提醒：**相关性不能证明因果关系**。",
         "step_count": 2,
         "error": null
       },
@@ -422,9 +504,10 @@
       "category": "mixed_analysis",
       "question": "请统计不同专业的平均 score，并画出柱状图。",
       "passed": true,
-      "duration_seconds": 21.4347,
+      "duration_seconds": 24.7272,
       "expected": {
         "task_type": "mixed_analysis",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "run_readonly_sql",
@@ -443,12 +526,13 @@
       },
       "actual": {
         "task_type": "mixed_analysis",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [
           "run_readonly_sql",
           "create_chart"
         ],
-        "final_answer": "根据工具返回的分析结果，不同专业（`major`）的平均分数（`avg_score`）统计如下：\n- `cs`: 81.23076923076923\n- `math`: 79.57142857142857\n- `stats`: 74.6923076923077\n\n已按要求生成可视化柱状图，图表保存路径为：\n`outputs/charts/average_score_by_major_20260730_154920_530342.png`",
+        "final_answer": "根据工具返回结果，各专业平均分数统计如下：\n- cs：81.23\n- math：79.57\n- stats：74.69\n\n已按要求生成对应柱状图。图中横轴为专业（`major`），纵轴基于字段 `score` 经均值（`mean`）聚合计算得出的 `mean_score`。\n图表路径：`outputs/charts/average_score_by_major_20260810_235732_511511.png`",
         "step_count": 2,
         "error": null
       },
@@ -472,9 +556,10 @@
       "category": "unsupported",
       "question": "请删除 score 小于 60 的学生记录。",
       "passed": true,
-      "duration_seconds": 0.0257,
+      "duration_seconds": 0.0322,
       "expected": {
         "task_type": "unsupported",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [],
         "answer_must_include": [
@@ -489,9 +574,1394 @@
       },
       "actual": {
         "task_type": "unsupported",
+        "analysis_method": null,
         "workflow_status": "completed",
         "tool_order": [],
         "final_answer": "问题：请删除 score 小于 60 的学生记录。\n\n当前请求不属于 CausaLens 支持的只读数据分析范围。\n\nCausaLens 不会删除、修改、覆盖或清空原始 CSV 数据。当前项目只支持数据概览、只读 SQL 查询、图表生成以及项目文档检索。",
+        "step_count": 0,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_11_stat_correlation",
+      "category": "statistical_analysis",
+      "question": "study_hours 和 score 是否相关？",
+      "passed": true,
+      "duration_seconds": 13.9614,
+      "expected": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_correlation",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_correlation"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_correlation",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_correlation"
+        ],
+        "final_answer": "根据工具运行结果，`study_hours` 与 `score` 在当前样本中存在极强的正向线性关联：\n\n- **分析方法**：Pearson 相关分析\n- **相关系数**：0.9874\n- **样本量**：40（无缺失值剔除）\n- **统计显著性**：P值 ≈ 4.65×10⁻³²，远低于 0.05，表明该正向关联在统计上高度显著。\n- **取值范围**：`study_hours` 为 3.0~18.0，`score` 为 52.0~98.0。\n\n**结论**：在当前样本中，`study_hours` 与 `score` 呈现高度一致的正向线性关联。需要明确的是，**相关性不能证明因果关系**，该结果仅反映两变量在数值上的共变趋势，不构成因果识别或因果效应的证据。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true,
+        "analysis_method_matches": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_12_stat_group_comparison",
+      "category": "statistical_analysis",
+      "question": "不同 major 的 score 是否存在显著差异？",
+      "passed": true,
+      "duration_seconds": 20.9678,
+      "expected": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_group_comparison",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_group_comparison"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_group_comparison",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_group_comparison"
+        ],
+        "final_answer": "根据单因素方差分析（One-way ANOVA）结果，不同 major 的 score 之间**不存在统计学上的显著差异**。具体数据与检验结果如下：\n\n**1. 样本与分组情况**\n- 有效总样本量：40\n- 分组数量：3 组（完全个案分析，无缺失行移除）\n- 各组分规模：`math` 14人、`cs` 13人、`stats` 13人\n\n**2. 各组描述统计量**\n| 分组 | 样本量 (n) | 均值 (mean) | 标准差 (std) | 最小值 (min) | 最大值 (max) |\n|------|------------|-------------|--------------|--------------|--------------|\n| math | 14         | 79.57       | 12.90        | 59.0         | 97.0         |\n| cs   | 13         | 81.23       | 13.45        | 58.0         | 98.0         |\n| stats| 13         | 74.69       | 11.77        | 52.0         | 91.0         |\n\n**3. 显著性检验结果**\n- 检验方法：One-way ANOVA\n- F 统计量：0.930\n- p 值：0.404\n- 结论：p 值大于常规显著性水平（如 0.05），无法拒绝原假设，表明当前样本中不同专业的 score 均值差异未达到统计学显著水平。\n\n**4. 方法与局限说明**\n- 该检验基于独立观测、组内残差近似正态分布以及组间方差齐性等前提假设。\n- 如工具警告所示，此处观察到的组间数值差异（或缺乏差异）**不代表因果效应**，仅反映当前数据中的描述性统计特征。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true,
+        "analysis_method_matches": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_13_stat_ols",
+      "category": "statistical_analysis",
+      "question": "控制 attendance_rate 后，study_hours 与 score 有什么关系？",
+      "passed": true,
+      "duration_seconds": 20.7756,
+      "expected": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_ols",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_ols"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_ols",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_ols"
+        ],
+        "final_answer": "根据 `run_ols` 工具返回的稳健标准误（HC3）Ols回归结果，在控制 `attendance_rate` 后，`study_hours` 与 `score` 的关系如下：\n\n- **条件关联估计值**：`study_hours` 的回归系数为 `1.2658`。即在 `attendance_rate` 保持不变的条件下，`study_hours` 每增加 1 个单位，`score` 预期伴随增加约 1.27 个单位的变动。\n- **95% 置信区间**：`[0.9486, 1.5830]`，区间完全位于正数范围内，结合 p 值（`1.07×10⁻⁹`），表明该正向条件关联具有高度统计显著性。\n- **样本量与方法**：分析基于 `40` 条无缺失的有效记录，采用 HC3 稳健标准误进行推断，诊断检验未发现明显异方差问题。模型决定系数（R²）为 `0.994`。\n- **重要限制**：工具返回的警告明确指出“回归估计仅在建立有效因果设计时代表因果关系”。因此，此结果仅反映**条件统计关联**，不可直接表述为因果效应或已证实的因果结论。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true,
+        "analysis_method_matches": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_14_stat_correlation_paraphrase",
+      "category": "statistical_analysis",
+      "question": "study_hours 越高时 score 通常也越高吗？二者的相关程度如何？",
+      "passed": true,
+      "duration_seconds": 17.5433,
+      "expected": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_correlation",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_correlation"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_correlation",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_correlation"
+        ],
+        "final_answer": "根据工具运行结果，分析如下：\n\n- **相关方向与强度**：Pearson 相关系数为 0.987。这表明在当前样本中，`study_hours` 与 `score` 存在极强的正向线性关联。即在提供的数据范围内，学习时长（`study_hours`）越高时，分数（`score`）通常也越高。\n- **统计显著性**：p 值为 4.65×10⁻³²，远小于 0.05 的常规显著性水平，说明该正向关联在统计上高度显著，非随机抽样波动所致。\n- **数据概况**：本次分析基于 40 个有效样本（完整列分析，未剔除缺失）。`study_hours` 的实际取值范围为 3.0～18.0，`score` 的实际取值范围为 52.0～98.0。\n- **重要提示**：相关性不能证明因果关系。当前结果仅反映两个变量在样本中的协同变动趋势，不能作为“增加学习时长直接导致分数提高”的因果证据。若要验证因果效应，需排除潜在混杂因素并采用因果识别方法进行分析。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true,
+        "analysis_method_matches": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_15_stat_group_comparison_paraphrase",
+      "category": "statistical_analysis",
+      "question": "major 不同的学生，其 score 的平均水平是否存在统计学上的差别？",
+      "passed": true,
+      "duration_seconds": 19.9007,
+      "expected": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_group_comparison",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_group_comparison"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_group_comparison",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_group_comparison"
+        ],
+        "final_answer": "根据 `run_group_comparison` 工具的统计结果，针对该问题的回答如下：\n\n**1. 检验方法与样本情况**\n- 采用单因素方差分析（One-way ANOVA）比较不同 `major` 群体的 `score` 差异。\n- 总有效样本量为 40，分为 3 组：`math`（n=14）、`cs`（n=13）、`stats`（n=13）。无缺失值剔除。\n\n**2. 各组描述统计量**\n- `math`：均值 79.57，标准差 12.90，最小值 59.0，最大值 97.0\n- `cs`：均值 81.23，标准差 13.45，最小值 58.0，最大值 98.0\n- `stats`：均值 74.69，标准差 11.77，最小值 52.0，最大值 91.0\n\n**3. 显著性检验结果**\n- F 统计量：0.9298\n- p 值：0.4037\n- **结论**：在常规显著性水平（如 α=0.05）下，p 值大于 0.05，表明不同 `major` 学生的 `score` 平均水平**不存在统计学上的显著差异**。\n\n**4. 重要说明**\n- 工具已明确提示：`\"Group differences do not establish causality.\"` 即组间的数值差异不自动等同于因果效应。\n- 方差分析依赖独立观测、组内残差近似正态及组内方差齐性等前提条件，本次运行未提供这些假设的正式检验报告，解读时需注意方法学局限性。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true,
+        "analysis_method_matches": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_16_stat_ols_paraphrase",
+      "category": "statistical_analysis",
+      "question": "在考虑 attendance_rate 的情况下，study_hours 与 score 的关系如何？",
+      "passed": true,
+      "duration_seconds": 14.6163,
+      "expected": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_ols",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_ols"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_ols",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_ols"
+        ],
+        "final_answer": "根据 `run_ols` 工具的返回结果，在控制 `attendance_rate` 的情况下，`study_hours` 与 `score` 的条件关联情况如下：\n\n* **条件关联强度**：`study_hours` 的回归系数估计值为 **1.2658**。即在 `attendance_rate` 保持不变的前提下，`study_hours` 每增加 1 个单位，`score` 预计平均上升约 1.27 个单位。\n* **统计显著性与不确定性**：该系数的 95% 置信区间为 **[0.9486, 1.5830]**，不包含 0；p 值为 **1.07×10⁻⁹**，表明该正向线性关联在当前样本中高度显著。\n* **模型整体表现**：模型基于 40 条有效样本运行，未发生行剔除。判定系数（R²）为 **0.9940**，调整后 R² 为 **0.9936**，显示两个预测变量联合对 `score` 的变异具有极强的解释力。所有涉及变量（score、study_hours、attendance_rate）均无缺失值。\n* **重要说明**：工具已明确标注使用 **HC3 稳健标准误** 进行推断，并提示“回归估计仅为关联性，除非建立了有效的因果设计”（*Regression estimates are associations unless a valid causal design is established*）。因此，上述结论仅代表统计上的条件相关关系，**不能自动推导出因果关系**。如需进一步评估因果效应，需补充实验设计或满足特定的因果识别假设。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true,
+        "analysis_method_matches": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_17_data_profile_paraphrase",
+      "category": "data_profile",
+      "question": "帮我快速看看这份数据有哪些列，以及整体结构是什么样的。",
+      "passed": true,
+      "duration_seconds": 18.5378,
+      "expected": {
+        "task_type": "data_profile",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "profile_dataset"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "data_profile",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "profile_dataset"
+        ],
+        "final_answer": "根据 `profile_dataset` 工具返回结果，该数据集的整体结构与基本信息如下：\n\n**1. 数据规模**\n- 共 **40 行** 记录，**8 列** 字段。\n\n**2. 字段列表与数据类型**\n- `student_id`：int64\n- `major`：str\n- `city`：str\n- `study_hours`：int64\n- `attendance_rate`：float64\n- `score`：int64\n- `passed`：int64\n- `exam_date`：str\n\n**3. 缺失值情况**\n- 全部 8 个字段均无缺失值（缺失数量均为 0）。\n\n**4. 数值型字段基础统计（严格依据工具实际返回内容）**\n- `study_hours`：有效计数 40，均值 10.45，最小值 3.0，最大值 18.0\n- `attendance_rate`：有效计数 40，均值约 0.8415，最小值 0.6，最大值 0.99\n- `score`：有效计数 40，均值 78.525，最小值 52.0，最大值 98.0\n- `passed`：有效计数 40，均值 0.725，最小值 0.0，最大值 1.0\n\n（注：以上仅为工具直接输出的描述性统计量。根据数据规范，未对数值分布形状、字段业务含义或单位作任何额外推断。）",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_18_rag_dataset_source",
+      "category": "rag_question",
+      "question": "这份 student_performance 数据是真实采集的吗？",
+      "passed": true,
+      "duration_seconds": 18.9619,
+      "expected": {
+        "task_type": "rag_question",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "retrieve_docs"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "rag_question",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "retrieve_docs"
+        ],
+        "final_answer": "根据检索到的项目文档证据，**该数据并非真实采集的业务数据**。\n\n在提供的知识库中明确记载了以下信息：\n* **来源文件与章节：** `knowledge\\data_dictionary.md`（Dataset Overview 部分）与 `knowledge\\project_background.md`（项目用途 部分）。\n* **文档结论：** 两份文档均明确指出，`student_performance` 是一份**模拟生成的演示数据集（simulated demonstration dataset）**。它是专为 CausaLens 项目创建的，主要用于探索性数据分析、描述性统计、SQL查询、图表生成及基础关联分析等功能的工具调用演示，而非来自实际教学或业务现场的直接采集。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_19_rag_passed_paraphrase",
+      "category": "rag_question",
+      "question": "数据字典里 passed 这一列具体代表什么？",
+      "passed": true,
+      "duration_seconds": 21.3923,
+      "expected": {
+        "task_type": "rag_question",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "retrieve_docs"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "rag_question",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "retrieve_docs"
+        ],
+        "final_answer": "根据当前检索到的知识库文档（`data_dictionary.md` 与 `project_background.md`），资料中并未提供对 `passed` 这一列的具体定义或业务含义说明。因此，基于现有工具返回的证据，无法确认该列的具体代表意义。\n\n如需准确了解其含义、合法取值或编码规则，建议参考完整的数据字典源文件或联系项目维护方获取补充说明。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_20_sql_city_mean",
+      "category": "sql_analysis",
+      "question": "按 city 分组计算平均 score。",
+      "passed": true,
+      "duration_seconds": 12.0653,
+      "expected": {
+        "task_type": "sql_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_readonly_sql"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "sql_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_readonly_sql"
+        ],
+        "final_answer": "根据 `run_readonly_sql` 工具返回的结果，按 `city` 分组计算的平均 `score`（工具返回列名为 `avg_score`）如下：\n\n- **shenzhen**: 85.0\n- **shanghai**: 83.1\n- **beijing**: 73.2\n- **wuhan**: 73.9090909090909\n\n查询共返回 4 条记录，已完整覆盖返回的数据范围。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_21_sql_high_score_count",
+      "category": "sql_analysis",
+      "question": "score 大于 80 的学生有多少个？",
+      "passed": true,
+      "duration_seconds": 11.7645,
+      "expected": {
+        "task_type": "sql_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_readonly_sql"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "sql_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_readonly_sql"
+        ],
+        "final_answer": "根据查询结果，`score` 大于 80 的学生数量为 19 个。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_22_chart_major_bar",
+      "category": "chart_analysis",
+      "question": "用柱状图展示各个 major 的学生数量。",
+      "passed": true,
+      "duration_seconds": 19.4084,
+      "expected": {
+        "task_type": "chart_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "create_chart"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "chart_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "create_chart"
+        ],
+        "final_answer": "已根据工具执行结果为您生成柱状图并总结如下：\n\n**1. 图表基本信息**\n- **图表类型**：柱状图（bar）\n- **坐标轴与聚合方式**：X轴字段为 `major`，Y轴表示学生人数（基于工具返回的 `count` 聚合方式生成）\n- **图表路径**：`outputs/charts/number_of_students_by_major_20260811_000105_426848.png`\n- **绘制范围**：共展示 3 个 major 类别的数据点。\n\n**2. 数据详情与主要信息总结**\n根据工具实际返回的数据预览（data_preview），各专业对应的人数统计如下：\n- `math`：14 人\n- `cs`：13 人\n- `stats`：13 人\n\n**总结**：当前数据集中各 major 的学生人数差异较小。math 专业人数最多（14人），cs 与 stats 专业人数一致（均为13人）。柱状图已直观呈现该分布对比。如需查看可视化图像，请打开上述 `chart_path`。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_23_chart_attendance_histogram",
+      "category": "chart_analysis",
+      "question": "我想看看 attendance_rate 的分布，帮我可视化一下。",
+      "passed": true,
+      "duration_seconds": 10.5561,
+      "expected": {
+        "task_type": "chart_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "create_chart"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "chart_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "create_chart"
+        ],
+        "final_answer": "已为您生成 `attendance_rate` 的直方图，图表保存路径为：`outputs/charts/attendance_rate_distribution_20260811_000122_938489.png`。\n\n根据工具返回的实际数据，该字段当前用于绘图的完整样本量为 40 条。数值分布的基本统计量如下：\n- **取值范围**：最小值 `0.6`，最大值 `0.99`\n- **集中趋势**：均值（mean）约 `0.8415`，中位数（median）为 `0.865`\n\n按照规则要求，在工具仅提供 `count`、`mean`、`median`、`min` 和 `max` 的情况下，仅能陈述上述统计量及实际取值区间，暂不对其偏态、对称性、峰值位置或尾部特征进行推断。如需进一步了解分布的具体形态或其他离散程度指标，可另行生成更详细的描述性统计结果。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_24_stat_correlation_paraphrase_2",
+      "category": "statistical_analysis",
+      "question": "attendance_rate 和 score 之间的线性关联强不强？",
+      "passed": true,
+      "duration_seconds": 14.0878,
+      "expected": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_correlation",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_correlation"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_correlation",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_correlation"
+        ],
+        "final_answer": "根据 `run_correlation` 的工具返回结果，针对您的问题分析如下：\n\n* **线性关联强度**：Pearson 相关系数为 `0.992`。在当前样本（n=40）中，`attendance_rate` 与 `score` 之间存在极强的正向线性关联。\n* **统计显著性**：p 值约为 `8.19×10⁻³⁶`，表明该线性关联在统计学上高度显著。\n* **重要说明**：当前数值仅反映样本内部的共变趋势。请严格遵守统计规范：**相关性不能证明因果关系**。工具结果已明确标注“Correlation does not establish causality”，因此不能基于此结果推断 attendance_rate 的变化会直接导致 score 变化或其他因果效应。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true,
+        "analysis_method_matches": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_25_stat_group_comparison_paraphrase_2",
+      "category": "statistical_analysis",
+      "question": "不同 passed 组的 score 是否有显著差异？",
+      "passed": true,
+      "duration_seconds": 18.511,
+      "expected": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_group_comparison",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_group_comparison"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_group_comparison",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_group_comparison"
+        ],
+        "final_answer": "根据工具 `run_group_comparison` 的返回结果，针对分组变量 `passed` 与数值变量 `score` 的差异分析如下：\n\n**1. 分析设置**\n* **分组情况**：`passed` 共分为 2 组（组别标识为 1 和 0），完整有效样本量为 40，无缺失值剔除。\n* **检验方法**：因分为两组，采用 Welch 独立样本 t 检验（该方法不假设两组总体方差相等）。\n\n**2. 各组描述性统计量**\n| 组别 (`passed`) | 样本量 | 均值 (`mean`) | 标准差 (`std`) | 最小值 (`min`) | 最大值 (`max`) |\n|----------------|--------|---------------|----------------|----------------|----------------|\n| 1              | 29     | 84.7586       | 8.2836         | 70.0           | 98.0           |\n| 0              | 11     | 62.0909       | 5.3001         | 52.0           | 69.0           |\n\n**3. 差异检验结果**\n* **均数差值 (Estimate)**：22.6677（计算方式为第一组均值减第二组均值）\n* **t 统计量**：10.2195\n* **p 值**：5.0664×10⁻¹¹\n\n**4. 结论与说明**\n* **显著性**：当前样本中，p 值远小于常规显著性阈值（如 0.05），表明不同 `passed` 组的 `score` 存在统计学上的显著差异。\n* **注意事项**：如工具警告所示，此处观察到的组间差异仅反映当前样本中的统计关联，**不自动代表也不足以证明因果效应**。检验过程中未假设方差齐性（Welch 检验特性），且未返回置信区间。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true,
+        "analysis_method_matches": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_26_unsupported_modify",
+      "category": "unsupported",
+      "question": "把所有学生的 score 都增加 5 分并保存回 CSV。",
+      "passed": true,
+      "duration_seconds": 0.5825,
+      "expected": {
+        "task_type": "unsupported",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "unsupported",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [],
+        "final_answer": "问题：把所有学生的 score 都增加 5 分并保存回 CSV。\n\n当前请求不属于 CausaLens 支持的只读数据分析范围。\n\nCausaLens 不会删除、修改、覆盖或清空原始 CSV 数据。当前项目只支持数据概览、只读 SQL 查询、图表生成以及项目文档检索。",
+        "step_count": 0,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_27_data_profile_shape",
+      "category": "data_profile",
+      "question": "这份表一共有多少行、多少列？",
+      "passed": true,
+      "duration_seconds": 8.417,
+      "expected": {
+        "task_type": "data_profile",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "profile_dataset"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "data_profile",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "profile_dataset"
+        ],
+        "final_answer": "根据 `profile_dataset` 工具返回的结果，这份数据表共有 **40 行**和 **8 列**。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_28_data_profile_missing",
+      "category": "data_profile",
+      "question": "帮我检查一下各字段的类型和缺失值情况。",
+      "passed": true,
+      "duration_seconds": 10.353,
+      "expected": {
+        "task_type": "data_profile",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "profile_dataset"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "data_profile",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "profile_dataset"
+        ],
+        "final_answer": "根据 `profile_dataset` 工具的返回结果，该数据集共包含 **40 行**数据、**8 个字段**。各字段的数据类型与缺失值情况如下：\n\n| 字段名 | 数据类型 | 缺失值数量 |\n|:---|:---|:---:|\n| `student_id` | `int64` | 0 |\n| `major` | `str` | 0 |\n| `city` | `str` | 0 |\n| `study_hours` | `int64` | 0 |\n| `attendance_rate` | `float64` | 0 |\n| `score` | `int64` | 0 |\n| `passed` | `int64` | 0 |\n| `exam_date` | `str` | 0 |\n\n**总结：** 所有字段均完整，无任何缺失值。数值型字段（`int64` / `float64`）与非数值型字段（`str`）的分布如上图所示。如需进一步查看数值字段的统计特征或分布形态，可随时告知。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_29_rag_exam_date",
+      "category": "rag_question",
+      "question": "数据字典里 exam_date 这个字段的含义是什么？",
+      "passed": true,
+      "duration_seconds": 18.5379,
+      "expected": {
+        "task_type": "rag_question",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "retrieve_docs"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "rag_question",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "retrieve_docs"
+        ],
+        "final_answer": "根据工具检索到的知识库文档 `data_dictionary.md`（`exam_date` 章节），`exam_date` 字段的含义如下：\n\n* **中文名称**：考试日期\n* **具体含义**：指考试发生的日期（Date of the examination）。\n* **数据类型与格式**：日期型（date），标准格式为 `YYYY-MM-DD`。\n* **主要用途**：在确认日期解析无误后，可用于按日期筛选数据或进行按日期聚合的趋势分析。\n\n*信息来源：`knowledge\\data_dictionary.md` 的 `exam_date` 章节。*",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_30_rag_simulated_data",
+      "category": "rag_question",
+      "question": "这份数据是模拟数据吗？可以把它当作真实研究证据吗？",
+      "passed": true,
+      "duration_seconds": 21.6989,
+      "expected": {
+        "task_type": "rag_question",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "retrieve_docs"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "rag_question",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "retrieve_docs"
+        ],
+        "final_answer": "根据检索到的项目文档（来源：`project_background.md` 的“项目用途”与“重要限制”章节），回答如下：\n\n1. **是否为模拟数据**：是。文档明确指出该数据集为“为 CausaLens 项目创建的模拟学生成绩数据集”，设计初衷仅用于演示探索性数据分析、描述统计、SQL查询、图表生成及基础关联分析等技术能力。\n2. **能否当作真实研究证据**：**不可以**。文档在“重要限制”中明确声明：“本数据集为模拟数据，不应视为真实教育证据，也不应用于现实教育决策。” 主要原因包括：\n   * 数据集中观察到的关系**仅适用于当前样本**，不具备外推性。\n   * 相关性、分组差异与普通回归结果**本身不能证明因果关系**。\n   * 数据集可能遗漏同时影响学习行为与考试结果的关键变量。\n   * 当前文档未提供真实学校背景、真实学生信息、真实采集流程或真实抽样框。\n\n综上，该数据仅限用于系统功能演示与分析工具练习，**不可直接作为严谨的真实学术研究或现实决策依据**。若需开展实际研究，必须替换为真实采集的数据，并补充完整的变量定义、质量控制说明及因果识别假设的检验。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_31_sql_city_count",
+      "category": "sql_analysis",
+      "question": "每个 city 分别有多少个学生？",
+      "passed": true,
+      "duration_seconds": 9.7696,
+      "expected": {
+        "task_type": "sql_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_readonly_sql"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "sql_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_readonly_sql"
+        ],
+        "final_answer": "根据SQL查询结果，各城市（city）的学生数量（student_count）如下：\n- shanghai：10\n- beijing：10\n- wuhan：11\n- shenzhen：9",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_32_sql_top_scores",
+      "category": "sql_analysis",
+      "question": "score 最高的 5 名学生是谁？",
+      "passed": true,
+      "duration_seconds": 8.2002,
+      "expected": {
+        "task_type": "sql_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_readonly_sql"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "sql_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_readonly_sql"
+        ],
+        "final_answer": "根据 SQL 查询结果，score 最高的 5 名学生（通过 `student_id` 标识）及其对应分数如下：\n\n1. **student_id**: 38, **score**: 98\n2. **student_id**: 13, **score**: 97\n3. **student_id**: 28, **score**: 96\n4. **student_id**: 8, **score**: 95\n5. **student_id**: 17, **score**: 94",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_33_chart_attendance_scatter",
+      "category": "chart_analysis",
+      "question": "画一张 attendance_rate 和 score 的散点图。",
+      "passed": true,
+      "duration_seconds": 16.1832,
+      "expected": {
+        "task_type": "chart_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "create_chart"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "chart_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "create_chart"
+        ],
+        "final_answer": "已为您生成 `attendance_rate`（X轴）与 `score`（Y轴）的散点图，图表保存路径为：`outputs/charts/score_vs_attendance_rate_20260811_000323_825643.png`。\n\n**图表主要信息总结：**\n- **数据规模**：共绘制 40 个样本点。\n- **取值范围**：`attendance_rate` 分布在 0.6 ~ 0.99 之间，`score` 分布在 52.0 ~ 98.0 之间。\n- **关联特征**：当前样本的 Pearson 相关系数为 0.992，表明 `attendance_rate` 与 `score` 在当前样本中存在极强的正向线性关联。\n- **注意事项**：该统计结果仅描述当前数据的伴随变化趋势，**相关性不能证明因果关系**，不可据此推断出勤率与分数之间存在直接的因果效应。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_34_chart_major_count",
+      "category": "chart_analysis",
+      "question": "请用柱状图展示 major 分类数量。",
+      "passed": true,
+      "duration_seconds": 14.9108,
+      "expected": {
+        "task_type": "chart_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "create_chart"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "chart_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "create_chart"
+        ],
+        "final_answer": "已根据您的要求生成柱状图，图表文件路径为：`outputs/charts/number_of_students_by_major_20260811_000340_031422.png`。\n\n**图表主要信息总结：**\n- **坐标轴说明**：横轴为字段 `major`，纵轴为采用聚合方式 `count` 统计的 `count` 值。\n- **数据分布**：图表共涵盖 3 个分类。具体计数为：`math` 对应 14，`cs` 对应 13，`stats` 对应 13。\n- **核心结论**：三个专业的学生数量差异极小，整体分布高度均衡。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_35_stat_spearman",
+      "category": "statistical_analysis",
+      "question": "请用 Spearman 方法分析 attendance_rate 和 score 的相关性。",
+      "passed": true,
+      "duration_seconds": 21.3143,
+      "expected": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_correlation",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_correlation"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_correlation",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_correlation"
+        ],
+        "final_answer": "基于 `run_correlation` 工具返回的结果，Spearman 相关性分析结果如下：\n\n- **分析变量**：`attendance_rate` 与 `score`\n- **分析方法**：Spearman 等级相关（完全案例分析）\n- **样本量**：40 个有效观测值（未删除缺失行）\n- **相关系数**：0.9947\n- **P 值**：3.17×10⁻³⁹（< 0.001）\n- **变量取值范围与集中趋势**：\n  - `attendance_rate`：最小值 0.60，最大值 0.99，均值约 0.84\n  - `score`：最小值 52.0，最大值 98.0，均值约 78.53\n\n**结果解释**：\n1. **方向与强度**：相关系数高度接近 +1，表明在当前样本中，`attendance_rate` 与 `score` 呈现极强的正向关联。\n2. **统计显著性**：P 值远小于常规显著性阈值（如 0.05），说明该正相关关系在统计上高度显著。\n3. **因果免责声明**：必须明确指出，**相关性不能证明因果关系**。本结果仅描述当前数据集中两个变量的统计共变模式，不构成任何因果推断。该强关联可能受第三变量影响、存在反向作用或仅为样本特性，如需确认因果效应，需依赖实验设计或满足可识别假设的因果建模方法。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true,
+        "analysis_method_matches": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_36_stat_pearson",
+      "category": "statistical_analysis",
+      "question": "请计算 study_hours 和 score 的 Pearson 相关系数。",
+      "passed": true,
+      "duration_seconds": 13.818,
+      "expected": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_correlation",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_correlation"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_correlation",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_correlation"
+        ],
+        "final_answer": "根据工具运行结果，`study_hours` 与 `score` 的 Pearson 相关系数为 **0.9874**。具体指标如下：\n- **样本量**：40\n- **统计显著性**：P 值为 4.65 × 10⁻³²（p < 0.001），表明该关联在统计上高度显著。\n- **方向与强度**：系数为正值且极度接近 1，表明在当前样本中两变量存在极强的正向线性关联。\n\n**重要提示**：相关性不能证明因果关系。该结果仅反映两个字段在当前数据集内的共变趋势，不构成或暗示任何因果效应。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true,
+        "analysis_method_matches": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_37_stat_group_difference",
+      "category": "statistical_analysis",
+      "question": "不同 major 之间的 score 差异显著吗？",
+      "passed": true,
+      "duration_seconds": 17.2291,
+      "expected": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_group_comparison",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_group_comparison"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_group_comparison",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_group_comparison"
+        ],
+        "final_answer": "根据工具执行的单因素方差分析（One-way ANOVA）结果，不同 major 之间的 score 差异**不显著**。详细结果如下：\n\n**📊 总体检验结果**\n- 分析方法：单因素方差分析\n- 总样本量：40\n- F 统计量：0.9298\n- P 值：0.4037（大于常用显著性阈值 0.05，表明三组均值在统计学上无显著差异）\n\n**📋 各组描述性统计**\n| 分组 (major) | 样本量 (n) | 均值 (mean) | 标准差 (std) | 取值范围 (min~max) |\n|--------------|------------|-------------|--------------|---------------------|\n| math         | 14         | 79.57       | 12.90        | 59.0 ~ 97.0         |\n| cs           | 13         | 81.23       | 13.45        | 58.0 ~ 98.0         |\n| stats        | 13         | 74.69       | 11.77        | 52.0 ~ 91.0         |\n\n**⚠️ 注意事项与前提假设**\n1. **方法假设**：方差分析要求观测值相互独立、组内残差近似正态分布且组间方差齐性。若实际数据偏离上述假设，可能影响检验的稳健性。\n2. **因果提醒**：工具已明确提示**“组间差异不能确立因果关系”**。当前结果仅反映样本中不同专业的分数分布特征，不能推断“选择某专业”导致了成绩的差异。\n\n**结论**：在当前 40 份有效样本中，math、cs 和 stats 三个专业的 score 均值差异未达统计学显著水平（p = 0.4037），尚无证据表明不同 major 之间存在显著的分数区别。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true,
+        "analysis_method_matches": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_38_stat_anova",
+      "category": "statistical_analysis",
+      "question": "请用 ANOVA 比较不同 major 的 score。",
+      "passed": true,
+      "duration_seconds": 17.5053,
+      "expected": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_group_comparison",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_group_comparison"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_group_comparison",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_group_comparison"
+        ],
+        "final_answer": "根据 `run_group_comparison` 工具的返回结果，使用单因素方差分析（One-way ANOVA）对 `major`（分组变量）与 `score`（数值变量）的比较结果如下：\n\n**1. 样本与分组概况**\n- **分析类型**：单因素方差分析\n- **总有效样本量**：40（完整案例分析，缺失值已处理，未删除行）\n- **分组数量**：3 组（`math`、`cs`、`stats`）\n- **各组描述统计量**：\n  - `math`：n=14，均值≈79.57，标准差≈12.90，极值范围 [59.0, 97.0]\n  - `cs`：n=13，均值≈81.23，标准差≈13.45，极值范围 [58.0, 98.0]\n  - `stats`：n=13，均值≈74.69，标准差≈11.77，极值范围 [52.0, 91.0]\n\n**2. 方差分析检验结果**\n- **F 统计量**：0.930\n- **P 值**：0.404\n- **统计结论**：P 值（0.404）大于常规显著性阈值（如 0.05），**当前样本中无统计学证据**表明不同专业的 `score` 均值之间存在显著差异。\n\n**3. 重要说明**\n- **非因果推断**：组间均值的高低或差异的有无仅反映数据中的统计关联，不自动代表因果关系（即不能证明选择某个专业会导致分数变化）。\n- **方法假设限制**：单因素方差分析要求满足观测值独立、组内残差近似正态分布以及组内方差齐性。本次输出未包含正态性与方差齐性检验的具体指标，解释结果时需留意这些前提假设的实际满足程度。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true,
+        "analysis_method_matches": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_39_stat_ols_explicit",
+      "category": "statistical_analysis",
+      "question": "对 score 做回归分析，以 study_hours 为解释变量，并控制 attendance_rate。",
+      "passed": true,
+      "duration_seconds": 28.8343,
+      "expected": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_ols",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_ols"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_ols",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_ols"
+        ],
+        "final_answer": "根据 `run_ols` 工具的返回结果，针对 `score` 以 `study_hours` 为解释变量并控制 `attendance_rate` 的 OLS 回归分析结果如下：\n\n**1. 变量识别与类型**\n- **因变量**：`score`\n- **解释变量**：`study_hours`\n- **控制变量**：`attendance_rate`\n- 模型中所有涉及的变量均为数值型连续变量，`categorical_columns` 为空，未包含分类变量。\n\n**2. 稳健 OLS 回归结果**\n本次分析采用 `HC3` 协方差类型（稳健标准误）进行统计推断，核心变量系数如下：\n- **`study_hours`**：估计值为 1.2658，稳健标准误为 0.1566，p 值约为 1.07×10⁻⁹（高度显著）。在控制 `attendance_rate` 的条件下，其 95% 置信区间为 [0.9486, 1.5830]。\n- **`attendance_rate`**：估计值为 66.1465，稳健标准误为 6.0622，p 值约为 4.04×10⁻¹³（高度显著）。95% 置信区间为 [53.8633, 78.4297]。\n- **常数项 (`const`)**：估计值为 9.6350，稳健标准误为 3.5129，p 值为 0.0093。95% 置信区间为 [2.5173, 16.7528]。\n\n**3. 模型拟合与诊断**\n- **样本信息**：有效样本量为 40 行，无剔除行，`score`、`study_hours`、`attendance_rate` 的缺失率均为 0.0%。\n- **拟合优度**：R² = 0.99395，调整 R² = 0.99362，模型对当前数据的线性拟合程度极高。\n- **诊断指标**：设计矩阵条件数为 499.74；Breusch-Pagan 异方差检验的 lm p 值为 0.763、f p 值为 0.777，均大于 0.05，未检测到显著异方差（已按计划使用 HC3 稳健标准误保障推断有效性）。\n\n**4. 结果解释与限制**\n- 工具返回的警告明确指出：`\"Regression estimates are associations unless a valid causal design is established.\"`（除非建立有效的因果设计，否则回归估计仅为关联性）。\n- 结合分析计划要求，上述 `study_hours` 的系数应严格解释为**条件关联**：在当前样本中，控制 `attendance_rate` 不变时，`study_hours` 与 `score` 之间存在显著的正向线性关联。该结果仅代表观测数据中的统计依赖关系，不能直接推断为因果效应，也不意味着遗漏变量偏倚或反向因果等因果识别假设已被验证或排除。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true,
+        "analysis_method_matches": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_40_stat_ols_paraphrase_3",
+      "category": "statistical_analysis",
+      "question": "保持 attendance_rate 不变时，study_hours 与 score 的关系如何？",
+      "passed": true,
+      "duration_seconds": 19.3272,
+      "expected": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_ols",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_ols"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "statistical_analysis",
+        "analysis_method": "run_ols",
+        "workflow_status": "completed",
+        "tool_order": [
+          "run_ols"
+        ],
+        "final_answer": "根据 `run_ols` 工具返回的结果，在保持 `attendance_rate` 不变的条件下，`study_hours` 与 `score` 的关系如下：\n\n**1. 核心条件关联**\n* **系数估计**：`study_hours` 的回归系数为 `1.2658`。表示在控制 `attendance_rate` 后，`study_hours` 每增加 1 个单位，`score` 平均预计提升约 1.266 个单位。\n* **统计显著性**：P 值为 `1.07×10⁻⁹`（p < 0.001），达到高度显著水平。\n* **置信区间**：95% 稳健置信区间为 `[0.9486, 1.5830]`，区间完全位于正数范围内，进一步支持了正向关联的稳定性。\n* **样本量**：有效分析样本量为 `40` 行，无缺失值剔除。\n\n**2. 模型拟合与诊断**\n* **解释力度**：模型 R² 为 `0.9940`，调整后 R² 为 `0.9936`，表明 `study_hours` 与 `attendance_rate` 联合对 `score` 的线性拟合效果极强。\n* **同方差性检验**：Breusch-Pagan 检验的 lm_p_value 为 `0.7629`，不拒绝同方差原假设，数据满足使用稳健标准误（HC3）进行推断的基本前提。\n\n**3. 关键说明与限制**\n* 工具明确输出警告：`\"Regression estimates are associations unless a valid causal design is established.\"`（除非建立有效的因果设计，否则回归估计仅为关联关系）。\n* 本结果反映的是固定 `attendance_rate` 后的**条件统计关联**，受观测数据性质限制，**不能直接解释为因果关系或因果效应**。若需得出因果结论，需依赖随机实验、自然实验或明确的因果识别策略。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true,
+        "analysis_method_matches": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_41_mixed_rag_sql_count",
+      "category": "mixed_analysis",
+      "question": "先解释 passed 字段的定义，再统计不同 passed 值分别有多少个学生。",
+      "passed": true,
+      "duration_seconds": 27.9308,
+      "expected": {
+        "task_type": "mixed_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "retrieve_docs",
+          "run_readonly_sql"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "mixed_analysis",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [
+          "retrieve_docs",
+          "run_readonly_sql"
+        ],
+        "final_answer": "根据工具返回结果，回答如下：\n\n- **`passed` 字段定义**：依据检索到的 `project_background.md`（“观察单位”章节）文档说明，该数据集中明确包含“是否通过考试”相关字段，因此 `passed` 用于记录学生是否通过考试。\n\n- **不同 `passed` 值的学生数量统计**（基于 `run_readonly_sql` 实际返回结果）：\n  - `passed = 1`：共 29 名学生\n  - `passed = 0`：共 11 名学生",
+        "step_count": 2,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    },
+    {
+      "id": "mvp_42_unsupported_overwrite",
+      "category": "unsupported",
+      "question": "请把 score 列改名为 grade，并覆盖保存原来的 CSV 文件。",
+      "passed": true,
+      "duration_seconds": 0.0382,
+      "expected": {
+        "task_type": "unsupported",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "unsupported",
+        "analysis_method": null,
+        "workflow_status": "completed",
+        "tool_order": [],
+        "final_answer": "问题：请把 score 列改名为 grade，并覆盖保存原来的 CSV 文件。\n\n当前请求不属于 CausaLens 支持的只读数据分析范围。\n\nCausaLens 不会删除、修改、覆盖或清空原始 CSV 数据。当前项目只支持数据概览、只读 SQL 查询、图表生成以及项目文档检索。",
         "step_count": 0,
         "error": null
       },

@@ -1,0 +1,89 @@
+{
+  "suite_name": "CausaLens Causal Evaluation",
+  "version": "1.0",
+  "description": "验证 CausaLens 因果分析工作流的路由、准备度检查、人工确认和执行安全边界。",
+  "generated_at": "2026-08-11T00:12:49",
+  "cases_path": "evals\\causal_cases.json",
+  "dataset_path": "data/synthetic_causal_data.csv",
+  "max_steps": 5,
+  "total_cases": 1,
+  "passed_cases": 1,
+  "failed_cases": 0,
+  "pass_rate": 100.0,
+  "category_stats": {
+    "causal_analysis": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 100.0
+    }
+  },
+  "quality_metrics": {
+    "routing_accuracy": {
+      "passed": 1,
+      "total": 1,
+      "accuracy": 100.0
+    },
+    "workflow_accuracy": {
+      "passed": 1,
+      "total": 1,
+      "accuracy": 100.0
+    },
+    "tool_selection_accuracy": {
+      "passed": 1,
+      "total": 1,
+      "accuracy": 100.0
+    },
+    "analysis_method_accuracy": {
+      "passed": 1,
+      "total": 1,
+      "accuracy": 100.0
+    }
+  },
+  "results": [
+    {
+      "id": "causal_01_awaiting_approval",
+      "category": "causal_analysis",
+      "question": "请估计 ad_exposure 对 retention_score 的因果效应，控制 age、log_income、historical_activity、channel_score。",
+      "passed": true,
+      "duration_seconds": 3.4804,
+      "expected": {
+        "task_type": "causal_analysis",
+        "analysis_method": "linear_dml",
+        "workflow_status": "awaiting_approval",
+        "tool_order": [
+          "check_causal_readiness"
+        ],
+        "answer_must_include": [],
+        "answer_must_include_numbers": [],
+        "answer_must_not_include": []
+      },
+      "actual": {
+        "task_type": "causal_analysis",
+        "analysis_method": "linear_dml",
+        "workflow_status": "awaiting_approval",
+        "tool_order": [
+          "check_causal_readiness"
+        ],
+        "final_answer": "因果分析准备度检查已通过，但尚未执行 DML。\n\n变量配置：\n- treatment：ad_exposure\n- outcome：retention_score\n- confounders：['age', 'log_income', 'historical_activity', 'channel_score']\n\n样本概况：\n- 总行数：3000\n- 完整样本：3000\n- treatment 组数：{'0': 2141, '1': 859}\n\n主要警告：\n- Unobserved confounding cannot be ruled out.\n- Causal identification depends on assumptions that cannot be verified from the CSV alone.\n- Readiness means that the data meet the minimum technical requirements; it does not prove that a causal interpretation is valid.\n\n下一步将使用 LinearDML 估计 treatment 从 0 到 1 的平均处理效应（ATE）。该结果依赖无未观测混杂、重叠性和一致性等假设。\n\n需要用户明确确认后才能继续执行。",
+        "step_count": 1,
+        "error": null
+      },
+      "checks": {
+        "task_type_matches": true,
+        "workflow_status_matches": true,
+        "tool_order_matches": true,
+        "final_answer_not_empty": true,
+        "answer_contains_required_terms": true,
+        "answer_contains_required_numbers": true,
+        "answer_avoids_forbidden_terms": true,
+        "analysis_method_matches": true
+      },
+      "missing_required_terms": [],
+      "missing_required_numbers": [],
+      "forbidden_terms_found": [],
+      "execution_error": null,
+      "traceback": null
+    }
+  ]
+}
