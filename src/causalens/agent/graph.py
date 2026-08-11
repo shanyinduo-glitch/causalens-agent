@@ -161,7 +161,8 @@ def route_after_tool_validation(
     if state.get("error"):
         print(
             "\n[route_after_tool_validation] "
-            "达到验证重试上限，进入 reporter"
+            "检测到不可继续执行的验证错误，"
+            "进入 reporter"
         )
         return "reporter"
 

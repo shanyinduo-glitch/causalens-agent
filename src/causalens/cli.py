@@ -381,18 +381,9 @@ def ask(
     # Graph 已经进入 Reporter，因此即使失败，
     # 也先展示 Reporter 给出的最终说明，再以非零状态退出。
     if error:
-        console.print("\n[bold red]工作流错误：[/bold red]")
-        console.print(error)
         raise typer.Exit(code=1)
 
     if failed_results:
-        console.print("\n[bold red]数据分析未完成：[/bold red]")
-
-        for tool_result in failed_results:
-            console.print(
-                f"- {tool_result.tool_name}：{tool_result.error}"
-            )
-
         raise typer.Exit(code=1)
 
 

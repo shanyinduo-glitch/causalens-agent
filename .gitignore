@@ -17,3 +17,6 @@ storage/
 
 outputs/reports/*
 requirements_before_week6.txt
+
+# Streamlit temporary uploads
+outputs/uploads/
