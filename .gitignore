@@ -11,7 +11,7 @@ outputs/charts/*.png
 # Runtime tool-call logs
 logs/*.jsonl
 # Generated evaluation results
-outputs/evals/*.jsonl
+outputs/evals/
 # Local vector database
 storage/
 
@@ -20,3 +20,5 @@ requirements_before_week6.txt
 
 # Streamlit temporary uploads
 outputs/uploads/
+# Streamlit local secrets
+.streamlit/secrets.toml
