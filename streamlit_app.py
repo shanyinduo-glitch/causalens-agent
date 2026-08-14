@@ -929,9 +929,9 @@ if uploaded_file is not None:
                 f"{file_size_kb:.1f} KB",
             )
 
-        st.write(
-            "字段：",
-            list(preview_df.columns),
+        st.markdown(
+            "**字段：** "
+            + " · ".join(f"`{col}`" for col in preview_df.columns)
         )
 
         st.dataframe(

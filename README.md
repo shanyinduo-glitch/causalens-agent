@@ -51,9 +51,72 @@ CausaLens 的目标不是让 LLM “直接分析所有数据”，而是让模�
 
 ---
 
-# 2. 核心功能
 
-## 2.1 CSV 数据概览
+## 2. Demo 展示
+
+下面展示 CausaLens 从数据上传、知识检索、统计分析到受控因果分析与安全拒绝的完整工作流。
+
+### 数据集上传与预览
+
+用户上传 CSV 后，系统首先展示数据集规模、字段信息与前 10 行数据。
+
+![Dataset Overview](docs/images/01_dataset_overview.png)
+
+---
+
+### RAG 数据字典检索
+
+对于字段含义、单位和项目背景等问题，Agent 会调用 `retrieve_docs` 从知识库中检索证据，而不是直接依赖模型猜测。
+
+![RAG Evidence Retrieval](docs/images/02_rag_evidence.png)
+
+---
+
+### 统计分析
+
+CausaLens 可以调用确定性的统计工具完成相关分析、组间比较和 OLS 回归，并明确区分统计关联与因果结论。
+
+![Statistical Analysis](docs/images/03_statistical_analysis.png)
+
+---
+
+### 因果分析准备度检查与人工确认
+
+因果分析不会直接执行。系统首先检查 treatment、outcome、confounders、样本规模和处理组分布，并展示识别假设与风险。
+
+只有用户明确确认后，才允许继续执行 LinearDML。
+
+![Causal Readiness](docs/images/04_causal_readiness.png)
+
+---
+
+### LinearDML 因果效应估计
+
+在模拟因果数据中：
+
+- True ATE = `3.0`
+- Naive treated-control difference ≈ `4.77`
+- LinearDML estimated ATE ≈ `3.14`
+- 95% CI ≈ `[2.81, 3.48]`
+
+该示例用于验证因果分析工作流与混杂控制效果，不代表真实业务结论。
+
+![LinearDML Result](docs/images/05_dml_result.png)
+
+---
+
+### Safety Boundary
+
+CausaLens 默认采用只读设计。对于删除、覆盖或修改数据等危险请求，系统会在工具执行之前拒绝请求。
+
+![Safety Rejection](docs/images/06_safety_rejection.png)
+
+---
+
+
+## 3. 核心功能
+
+### 3.1 CSV 数据概览
 
 通过：
 
@@ -78,7 +141,7 @@ profile_dataset
 
 ---
 
-## 2.2 只读 SQL 分析
+### 3.2 只读 SQL 分析
 
 通过 DuckDB 执行：
 
@@ -100,7 +163,7 @@ CausaLens 只允许 **read-only SQL**，不会允许用户或模型通过 SQL �
 
 ---
 
-## 2.3 数据可视化
+### 3.3 数据可视化
 
 通过：
 
@@ -127,7 +190,7 @@ line
 
 ---
 
-## 2.4 RAG 数据字典检索
+### 3.4 RAG 数据字典检索
 
 CausaLens 包含轻量级 RAG Knowledge Base。
 
@@ -158,11 +221,11 @@ Agent 会从数据字典中检索对应证据，而不是依靠模型猜测字�
 
 ---
 
-# 3. 统计分析
+## 4. 统计分析
 
 CausaLens 当前支持三类主要统计分析工具。
 
-## 3.1 相关分析
+### 4.1 相关分析
 
 工具：
 
@@ -196,7 +259,7 @@ study_hours 和 score 是否相关？
 
 ---
 
-## 3.2 组间比较
+### 4.2 组间比较
 
 工具：
 
@@ -226,7 +289,7 @@ run_group_comparison
 
 ---
 
-## 3.3 OLS 回归
+### 4.3 OLS 回归
 
 工具：
 
@@ -254,7 +317,7 @@ CausaLens 会将普通观察性 OLS 结果解释为**条件关联关系**，而�
 
 ---
 
-# 4. 因果分析
+## 5. 因果分析
 
 CausaLens 在普通统计工作流之外设计了独立的因果分析流程。
 
@@ -270,7 +333,7 @@ LinearDML
 
 ---
 
-## 4.1 Causal Readiness
+### 5.1 Causal Readiness
 
 在运行 DML 之前首先执行：
 
@@ -309,7 +372,7 @@ Readiness 通过只表示：
 
 ---
 
-## 4.2 Human-in-the-loop
+### 5.2 Human-in-the-loop
 
 因果分析加入了人工确认机制。
 
@@ -351,7 +414,7 @@ Human Approval
 
 ---
 
-## 4.3 Synthetic Causal Dataset
+### 5.3 Synthetic Causal Dataset
 
 项目包含用于验证因果分析流程的模拟数据：
 
@@ -399,7 +462,64 @@ ATE ≈ 3.14
 
 ---
 
-# 5. LangGraph Agent Workflow
+## 6. 系统架构
+
+CausaLens 将自然语言理解、工作流编排和确定性数据分析能力分离：
+
+- **LLM** 负责理解用户问题、识别任务类型、生成分析计划和候选工具参数；
+- **LangGraph** 负责状态管理、节点编排、条件路由、失败处理以及因果分析审批流程；
+- **Python Tools** 负责真正的数据读取、统计计算、SQL、可视化、RAG 和因果估计；
+- **Safety Layer** 在工具执行前进行参数验证、字段一致性检查和只读边界控制；
+- **Streamlit / CLI** 作为交互入口，共享同一套 Agent 核心工作流。
+
+```mermaid
+flowchart TB
+    U[User] --> I[Streamlit Web UI / CLI]
+
+    I --> G[LangGraph Agent Layer]
+
+    G --> R[Intent Router]
+    R --> P[Planner]
+
+    P --> O[Ordinary Analysis Path]
+    P --> C[Causal Analysis Path]
+
+    O --> T[Deterministic Tool Layer]
+    T --> T1[Profile / SQL / Chart / Statistics / RAG]
+
+    C --> CR[Causal Readiness]
+    CR --> H[Human Approval]
+    H --> D[LinearDML]
+
+    CSV[(CSV Dataset)] --> T
+    KB[(Knowledge Base)] --> T
+    CSV --> CR
+    CSV --> D
+
+    T --> RES[Analysis Results]
+    D --> RES
+
+    RES --> OUT[Execution Trace / Markdown Report]
+```
+
+这一架构的核心思想是：
+
+> **让 LLM 决定“要做什么”，让确定性的 Python 工具负责“怎么算”，让 LangGraph 控制“按什么顺序、安全地执行”。**
+
+对于普通统计任务，Agent 可以自动完成工具选择、参数验证和执行；对于因果分析，则额外经过：
+
+```text
+Causal Readiness
+        ↓
+Human Approval
+        ↓
+LinearDML
+```
+
+从而避免模型仅凭自然语言请求直接执行因果估计。
+
+---
+## 7. LangGraph Agent Workflow
 
 CausaLens 使用 LangGraph 管理整个 Agent 工作流。
 
@@ -434,7 +554,7 @@ Reporter
 
 ---
 
-## 因果分析工作流
+### 因果分析工作流
 
 ```mermaid
 flowchart TD
@@ -460,7 +580,7 @@ flowchart TD
 
 ---
 
-# 6. 当前支持的任务类型
+## 8. 当前支持的任务类型
 
 ```text
 data_profile
@@ -488,7 +608,7 @@ unsupported
 
 ---
 
-# 7. Tool Layer
+## 9. Tool Layer
 
 普通 Tool Registry 当前主要包含：
 
@@ -513,7 +633,7 @@ run_dml
 
 ---
 
-# 8. Safety & Reliability
+## 10. Safety & Reliability
 
 CausaLens 不仅关注“能不能得到答案”，也关注：
 
@@ -521,7 +641,7 @@ CausaLens 不仅关注“能不能得到答案”，也关注：
 
 ---
 
-## 8.1 Read-only SQL
+### 10.1 Read-only SQL
 
 系统拒绝：
 
@@ -543,7 +663,7 @@ CausaLens 不仅关注“能不能得到答案”，也关注：
 
 ---
 
-## 8.2 Tool 参数验证
+### 10.2 Tool 参数验证
 
 模型生成的工具调用不会直接执行。
 
@@ -563,7 +683,7 @@ Tool Validator
 
 ---
 
-## 8.3 Semantic Field Fidelity
+### 10.3 Semantic Field Fidelity
 
 数据研究 Agent 中一个特殊风险是：
 
@@ -589,7 +709,7 @@ study_hours 和 score
 
 ---
 
-## 8.4 Non-retryable Semantic Validation
+### 10.4 Non-retryable Semantic Validation
 
 部分错误允许 LLM retry，例如：
 
@@ -612,7 +732,7 @@ JSON 格式错误
 
 ---
 
-## 8.5 Correlation ≠ Causation
+### 10.5 Correlation ≠ Causation
 
 CausaLens 对统计回答加入明确的因果边界。
 
@@ -633,7 +753,7 @@ study_hours 与 score 的 Pearson correlation 很高，
 
 ---
 
-## 8.6 Prompt Injection Boundary
+### 10.6 Prompt Injection Boundary
 
 来自以下来源的内容均被视为：
 
@@ -661,7 +781,7 @@ Ignore previous instructions...
 
 ---
 
-## 8.7 User-facing Error Sanitization
+### 10.7 User-facing Error Sanitization
 
 内部系统会保留真实错误信息用于调试。
 
@@ -690,7 +810,7 @@ nonnumeric
 
 ---
 
-# 9. Streamlit Web Demo
+## 11. Streamlit Web Demo
 
 项目根目录包含：
 
@@ -724,15 +844,15 @@ python -m streamlit run streamlit_app.py
 
 ---
 
-## Web 页面当前支持
+### Web 页面当前支持
 
-### CSV 上传
+#### CSV 上传
 
 用户可以上传 CSV 文件。
 
 ---
 
-### Dataset Preview
+#### Dataset Preview
 
 页面展示：
 
@@ -744,14 +864,11 @@ python -m streamlit run streamlit_app.py
 
 ---
 
-### Natural Language Question
+#### Natural Language Question
 
 用户输入自然语言分析问题后，Streamlit 调用与 CLI 相同的：
 
 
-改成：
-
-```markdown
 ```text
 run_causalens_graph(...)
 ```
@@ -760,7 +877,7 @@ Web UI 不重新实现 Agent 逻辑。
 
 ---
 
-### Analysis Plan
+#### Analysis Plan
 
 展示 Agent 生成的分析计划：
 
@@ -773,7 +890,7 @@ Web UI 不重新实现 Agent 逻辑。
 
 ---
 
-### Execution Trace
+#### Execution Trace
 
 展示客观工具执行轨迹，例如：
 
@@ -795,13 +912,13 @@ Tool Execution Trace
 
 ---
 
-### Charts
+#### Charts
 
 当 `create_chart` 成功生成图表时，Web 页面可以直接展示对应图片。
 
 ---
 
-### RAG Sources
+#### RAG Sources
 
 当任务使用 `retrieve_docs` 时，可以显示：
 
@@ -816,7 +933,7 @@ distance
 
 ---
 
-### Causal Approval
+#### Causal Approval
 
 当任务被识别为因果分析时：
 
@@ -834,7 +951,7 @@ LinearDML
 
 ---
 
-### Markdown Report Download
+#### Markdown Report Download
 
 用户可以下载：
 
@@ -848,7 +965,7 @@ causalens_analysis_report.md
 
 ---
 
-# 10. Markdown Analysis Report
+## 12. Markdown Analysis Report
 
 报告主要包括：
 
@@ -880,7 +997,7 @@ causalens_analysis_report.md
 
 ---
 
-# 11. CLI 使用方式
+## 13. CLI 使用方式
 
 除了 Web UI，也可以直接使用 CLI。
 
@@ -904,7 +1021,7 @@ $env:PYTHONPATH = "$PWD\src"
 
 ---
 
-## Dataset Profile
+### Dataset Profile
 
 ```powershell
 python -m causalens.cli ask `
@@ -914,7 +1031,7 @@ python -m causalens.cli ask `
 
 ---
 
-## RAG
+### RAG
 
 ```powershell
 python -m causalens.cli ask `
@@ -924,7 +1041,7 @@ python -m causalens.cli ask `
 
 ---
 
-## SQL
+### SQL
 
 ```powershell
 python -m causalens.cli ask `
@@ -934,7 +1051,7 @@ python -m causalens.cli ask `
 
 ---
 
-## Correlation
+### Correlation
 
 ```powershell
 python -m causalens.cli ask `
@@ -944,7 +1061,7 @@ python -m causalens.cli ask `
 
 ---
 
-## Group Comparison
+### Group Comparison
 
 ```powershell
 python -m causalens.cli ask `
@@ -954,7 +1071,7 @@ python -m causalens.cli ask `
 
 ---
 
-## OLS
+### OLS
 
 ```powershell
 python -m causalens.cli ask `
@@ -964,7 +1081,7 @@ python -m causalens.cli ask `
 
 ---
 
-# 12. 模型配置
+## 14. 模型配置
 
 CausaLens 当前通过环境变量读取模型 API Key。
 
@@ -991,7 +1108,7 @@ MODEL_NAME
 
 ---
 
-# 13. Testing
+## 15. Testing
 
 完整运行自动化测试：
 
@@ -1030,7 +1147,7 @@ pytest
 
 ---
 
-# 14. Evaluation
+## 16. Evaluation
 
 CausaLens 不只测试最终回答。
 
@@ -1050,7 +1167,7 @@ Safety Behavior
 
 ---
 
-## 14.1 MVP Evaluation
+### 16.1 MVP Evaluation
 
 运行：
 
@@ -1112,7 +1229,7 @@ Analysis Method Accuracy:
 
 ---
 
-## 14.2 Causal Evaluation
+### 16.2 Causal Evaluation
 
 当前因果工作流评测：
 
@@ -1131,7 +1248,7 @@ Analysis Method Accuracy:
 
 ---
 
-## 14.3 Safety Evaluation
+### 16.3 Safety Evaluation
 
 安全评测覆盖：
 
@@ -1150,7 +1267,7 @@ conclusion_safety
 
 ---
 
-## 14.4 Web Smoke Test
+### 16.4 Web Smoke Test
 
 手动完成的主要 Web Flow：
 
@@ -1173,7 +1290,7 @@ conclusion_safety
 
 ---
 
-# 15. 项目结构
+## 17. 项目结构
 
 ```text
 causalens-agent/
@@ -1225,58 +1342,58 @@ causalens-agent/
 
 ---
 
-# 16. 示例问题
+## 18. 示例问题
 
-## Dataset Profile
+### Dataset Profile
 
 ```text
 这个数据集有哪些字段？
 ```
 
-## RAG
+### RAG
 
 ```text
 passed 字段是什么意思？
 ```
 
-## SQL
+### SQL
 
 ```text
 不同专业的平均 score 分别是多少？
 ```
 
-## Visualization
+### Visualization
 
 ```text
 请画出 score 的分布图。
 ```
 
-## Correlation
+### Correlation
 
 ```text
 study_hours 和 score 是否相关？
 ```
 
-## Group Comparison
+### Group Comparison
 
 ```text
 不同 major 的 score 是否存在显著差异？
 ```
 
-## OLS
+### OLS
 
 ```text
 控制 attendance_rate 后，
 study_hours 与 score 有什么关系？
 ```
 
-## Mixed Analysis
+### Mixed Analysis
 
 ```text
 请统计不同专业的平均 score，并画柱状图。
 ```
 
-## Safety
+### Safety
 
 ```text
 删除所有 score < 60 的数据。
@@ -1284,9 +1401,9 @@ study_hours 与 score 有什么关系？
 
 ---
 
-# 17. 项目设计取舍
+## 19. 项目设计取舍
 
-## 为什么不让 LLM 直接计算？
+### 为什么不让 LLM 直接计算？
 
 LLM 适合：
 
@@ -1310,7 +1427,7 @@ SQL 安全校验
 
 ---
 
-## 为什么使用 LangGraph？
+### 为什么使用 LangGraph？
 
 项目早期使用的是手写 Tool Loop。
 
@@ -1342,7 +1459,7 @@ Conditional Routing
 
 ---
 
-## 为什么不是一开始就使用 LangGraph？
+### 为什么不是一开始就使用 LangGraph？
 
 因为项目早期工作流简单。
 
@@ -1362,7 +1479,7 @@ LLM
 
 ---
 
-# 18. 当前局限
+## 20. 当前局限
 
 CausaLens v1.0 仍然存在明确边界：
 
@@ -1384,7 +1501,7 @@ CausaLens v1.0 仍然存在明确边界：
 
 ---
 
-# 19. CausaLens 不是什么
+## 21. CausaLens 不是什么
 
 CausaLens 不承诺：
 
@@ -1405,7 +1522,7 @@ CausaLens 不承诺：
 
 ---
 
-# 20. Future Work
+## 22. Future Work
 
 未来可以继续探索：
 
@@ -1431,7 +1548,7 @@ v1.0 阶段不再继续无限扩展功能。
 
 ---
 
-# 21. Development Journey
+## 23. Development Journey
 
 CausaLens 采用逐步迭代的方式开发：
 
@@ -1476,7 +1593,7 @@ Observability
 
 ---
 
-# 22. 项目定位
+## 24. 项目定位
 
 CausaLens v1.0 可以概括为：
 
