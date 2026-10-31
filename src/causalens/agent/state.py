@@ -46,6 +46,9 @@ class AgentState(TypedDict, total=False):
 
     dataset_path: str
     question: str
+    research_context: str
+    report_status: str
+    report_error_type: str
 
     # =========================
     # 任务理解和规划
@@ -129,6 +132,20 @@ class AgentState(TypedDict, total=False):
     outcome: str | None
     confounders: list[str]
 
+    # 从自然语言中提取的因果问题草案。研究语境不明确时保留 None，
+    # 不允许模型静默补全。
+    causal_question: dict[str, Any]
+    study_design_status: Literal[
+        "draft",
+        "awaiting_confirmation",
+        "confirmed",
+    ]
+    missing_design_fields: list[str]
+    causal_dag_edges: list[tuple[str, str]]
+    causal_identification: dict[str, Any]
+    causal_diagnostics: dict[str, Any]
+    causal_data_quality: dict[str, Any]
+
     causal_readiness: dict[str, Any]
 
     requires_approval: bool
@@ -171,6 +188,13 @@ def create_initial_state(
         "treatment": None,
         "outcome": None,
         "confounders": [],
+        "causal_question": {},
+        "study_design_status": "draft",
+        "missing_design_fields": [],
+        "causal_dag_edges": [],
+        "causal_identification": {},
+        "causal_diagnostics": {},
+        "causal_data_quality": {},
         "causal_readiness": {},
         "requires_approval": False,
         "approved":  approved,

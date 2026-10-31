@@ -9,6 +9,48 @@ from types import SimpleNamespace
 runner = CliRunner()
 
 
+def test_cli_contract_run_validates_without_approval(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    dataset = tmp_path / "data.csv"
+    dataset.write_text("treatment,outcome,x\n0,1,2\n", encoding="utf-8")
+    contract = tmp_path / "contract.json"
+    contract.write_text("{}", encoding="utf-8")
+
+    monkeypatch.setattr(
+        cli,
+        "run_explicit_causal_contract",
+        lambda **kwargs: {
+            "success": True,
+            "workflow_status": "awaiting_approval",
+            "stage": "approval",
+            "design_selection": {
+                "selected_estimator_names": ["AIPW"],
+            },
+            "warnings": [],
+            "errors": [],
+            "estimation": None,
+        },
+    )
+
+    result = runner.invoke(
+        cli.app,
+        [
+            "contract-run",
+            "--dataset-path",
+            str(dataset),
+            "--contract-path",
+            str(contract),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "awaiting_approval" in result.stdout
+    assert "模型调用次数" in result.stdout
+    assert "--approve" in result.stdout
+
+
 def test_cli_shows_friendly_error_for_missing_file():
     """文件不存在时，CLI 应显示友好提示，而不是 Traceback。"""
 

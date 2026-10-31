@@ -1,0 +1,182 @@
+{
+  "audit_date": "2026-10-21T19:49:02.339093+08:00",
+  "all_columns_match": true,
+  "column_checks": {
+    "date": true,
+    "y_ret": true,
+    "t_diff": true,
+    "dollar_ret": true,
+    "sp500_ret": true,
+    "fed_funds_diff": true,
+    "comex_gold_ret": true,
+    "global_holdings_tonnes_ret": true,
+    "vix_level": true,
+    "cpi_yoy_level": true,
+    "infl_exp5y_level": true,
+    "gprh_level": true,
+    "time_trend": true,
+    "y_ret_lag1": true,
+    "t_diff_lag1": true
+  },
+  "source_rows": 4540,
+  "output_rows": 4538,
+  "datasets": {
+    "55de970f16e86da678c9de1176a0de55d18fb970c429e62021d82fefde9ce291": {
+      "kind": "levels",
+      "name": "黄金TIPS论文案例：levels",
+      "risks": [
+        "CPI月份匹配方向与源代码注释相反，尚未修复。",
+        "GPR与ETF按源日期填充，真实发布日期尚未核实。",
+        "删行后的相邻观测不保证是连续交易日；转换不能修复上游时序风险。"
+      ],
+      "knowledge": [
+        {
+          "field": "y",
+          "text": "黄金下午定盘价，美元/盎司",
+          "source": "01_data_preprocessing.py：读取、重命名及单位注释"
+        },
+        {
+          "field": "t",
+          "text": "10年期TIPS实际收益率，百分数口径",
+          "source": "01_data_preprocessing.py：读取、重命名及单位注释"
+        },
+        {
+          "field": "dollar",
+          "text": "名义广义美元指数",
+          "source": "01_data_preprocessing.py：读取、重命名及单位注释"
+        },
+        {
+          "field": "sp500",
+          "text": "标普500指数",
+          "source": "01_data_preprocessing.py：读取、重命名及单位注释"
+        },
+        {
+          "field": "fed_funds",
+          "text": "联邦基金利率，百分数口径",
+          "source": "01_data_preprocessing.py：读取、重命名及单位注释"
+        },
+        {
+          "field": "comex_gold",
+          "text": "COMEX黄金库存，盎司",
+          "source": "01_data_preprocessing.py：读取、重命名及单位注释"
+        },
+        {
+          "field": "global_holdings_tonnes",
+          "text": "全球黄金ETF持仓，吨",
+          "source": "01_data_preprocessing.py：读取、重命名及单位注释"
+        },
+        {
+          "field": "vix",
+          "text": "VIX指数",
+          "source": "01_data_preprocessing.py：读取、重命名及单位注释"
+        },
+        {
+          "field": "cpi_yoy",
+          "text": "CPI同比，百分数",
+          "source": "01_data_preprocessing.py：读取、重命名及单位注释"
+        },
+        {
+          "field": "infl_exp5y",
+          "text": "5年期盈亏平衡通胀率，百分数口径",
+          "source": "01_data_preprocessing.py：读取、重命名及单位注释"
+        },
+        {
+          "field": "gprh",
+          "text": "地缘政治风险指数",
+          "source": "01_data_preprocessing.py：读取、重命名及单位注释"
+        }
+      ],
+      "verified_transform": true,
+      "data_status": "legacy_reproduction_not_release_verified",
+      "lineage": {
+        "parent_sha256": null,
+        "recipe": "original_cleaned_levels",
+        "release_dates_verified": false
+      }
+    },
+    "6299d5728160bb024e45e30c3cc94b481f9e5d5197c4d09e85b6c427105eebb6": {
+      "kind": "stationary",
+      "name": "黄金TIPS论文案例：stationary",
+      "risks": [
+        "CPI月份匹配方向与源代码注释相反，尚未修复。",
+        "GPR与ETF按源日期填充，真实发布日期尚未核实。",
+        "删行后的相邻观测不保证是连续交易日；转换不能修复上游时序风险。"
+      ],
+      "knowledge": [
+        {
+          "field": "y_ret",
+          "text": "黄金下午定盘价，美元/盎司的相邻观测对数差分，未乘100。",
+          "source": "E:/graduation_project/causal_analysis_scripts/02_descriptive_stats.py：转换与滞后构造"
+        },
+        {
+          "field": "dollar_ret",
+          "text": "名义广义美元指数的相邻观测对数差分，未乘100。",
+          "source": "E:/graduation_project/causal_analysis_scripts/02_descriptive_stats.py：转换与滞后构造"
+        },
+        {
+          "field": "sp500_ret",
+          "text": "标普500指数的相邻观测对数差分，未乘100。",
+          "source": "E:/graduation_project/causal_analysis_scripts/02_descriptive_stats.py：转换与滞后构造"
+        },
+        {
+          "field": "comex_gold_ret",
+          "text": "COMEX黄金库存，盎司的相邻观测对数差分，未乘100。",
+          "source": "E:/graduation_project/causal_analysis_scripts/02_descriptive_stats.py：转换与滞后构造"
+        },
+        {
+          "field": "global_holdings_tonnes_ret",
+          "text": "全球黄金ETF持仓，吨的相邻观测对数差分，未乘100。",
+          "source": "E:/graduation_project/causal_analysis_scripts/02_descriptive_stats.py：转换与滞后构造"
+        },
+        {
+          "field": "t_diff",
+          "text": "10年期TIPS实际收益率，百分数口径的相邻观测差分，单位为百分点。",
+          "source": "E:/graduation_project/causal_analysis_scripts/02_descriptive_stats.py：转换与滞后构造"
+        },
+        {
+          "field": "fed_funds_diff",
+          "text": "联邦基金利率，百分数口径的相邻观测差分，单位为百分点。",
+          "source": "E:/graduation_project/causal_analysis_scripts/02_descriptive_stats.py：转换与滞后构造"
+        },
+        {
+          "field": "vix_level",
+          "text": "VIX指数，保留原值。",
+          "source": "E:/graduation_project/causal_analysis_scripts/02_descriptive_stats.py：转换与滞后构造"
+        },
+        {
+          "field": "cpi_yoy_level",
+          "text": "CPI同比，百分数，保留原值。",
+          "source": "E:/graduation_project/causal_analysis_scripts/02_descriptive_stats.py：转换与滞后构造"
+        },
+        {
+          "field": "infl_exp5y_level",
+          "text": "5年期盈亏平衡通胀率，百分数口径，保留原值。",
+          "source": "E:/graduation_project/causal_analysis_scripts/02_descriptive_stats.py：转换与滞后构造"
+        },
+        {
+          "field": "gprh_level",
+          "text": "地缘政治风险指数，保留原值。",
+          "source": "E:/graduation_project/causal_analysis_scripts/02_descriptive_stats.py：转换与滞后构造"
+        },
+        {
+          "field": "time_trend",
+          "text": "删差分缺失前的观测序号，从1开始。",
+          "source": "E:/graduation_project/causal_analysis_scripts/02_descriptive_stats.py：转换与滞后构造"
+        },
+        {
+          "field": "y_ret_lag1 t_diff_lag1",
+          "text": "对应转换变量的前一条有效输入观测值，不保证是前一自然日。",
+          "source": "E:/graduation_project/causal_analysis_scripts/02_descriptive_stats.py：转换与滞后构造"
+        }
+      ],
+      "verified_transform": true,
+      "data_status": "legacy_reproduction_not_release_verified",
+      "lineage": {
+        "parent_sha256": "55de970f16e86da678c9de1176a0de55d18fb970c429e62021d82fefde9ce291",
+        "recipe": "thesis_v1",
+        "release_dates_verified": false
+      }
+    }
+  },
+  "audit_record": "outputs\\case_studies\\gold_tips_thesis\\audits\\audit_20261021_194902_452282.json"
+}

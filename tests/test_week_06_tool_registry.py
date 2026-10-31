@@ -38,13 +38,17 @@ def test_week6_statistical_tools_are_exposed_to_model():
     )
 
 
-def test_dml_is_not_exposed_to_model_yet():
+def test_causal_estimators_are_not_exposed_to_model():
     exposed_tool_names = {
         tool["function"]["name"]
         for tool in TOOLS
     }
 
     assert "run_dml" not in exposed_tool_names
+    assert "run_aipw" not in exposed_tool_names
+    assert "run_causal_forest" not in exposed_tool_names
+    assert "run_difference_in_differences" not in exposed_tool_names
+    assert "run_causal_estimators" not in exposed_tool_names
     assert (
         "check_causal_readiness"
         not in exposed_tool_names

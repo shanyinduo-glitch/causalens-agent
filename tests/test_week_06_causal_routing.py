@@ -66,7 +66,7 @@ def test_router_classifies_causal_analysis():
     )
     assert (
         result["analysis_method"]
-        == "linear_dml"
+        == "causal_estimation_suite"
     )
 
 

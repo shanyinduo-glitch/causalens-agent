@@ -143,6 +143,33 @@ def test_format_non_numeric_field_error():
 
     assert "要求使用数值字段" in message
     assert "检查变量类型" in message
-
     assert "'major'" not in message
     assert "'city'" not in message
+
+
+def test_reporter_preserves_successful_tools_when_later_step_fails():
+    state = {
+        "question": "检查数据规模和缺失情况",
+        "task_type": "data_profile",
+        "tool_results": [{
+            "tool_name": "profile_dataset",
+            "success": True,
+            "result": {
+                "rows": 4538,
+                "columns": 15,
+                "column_names": ["t_diff", "y_ret"],
+                "missing_values": {"t_diff": 0, "y_ret": 0},
+                "numeric_summary": {},
+            },
+        }],
+        "workflow_status": "reporting",
+        "error": "工具决策模型调用失败：Request timed out",
+    }
+
+    updates = reporter_node(state)
+
+    assert updates["workflow_status"] == "completed"
+    assert updates["report_status"] == "fallback"
+    assert "4538 行" in updates["final_answer"]
+    assert "只解读上一轮结果" in updates["final_answer"]
+    assert updates["error"] == state["error"]

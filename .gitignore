@@ -20,5 +20,17 @@ requirements_before_week6.txt
 
 # Streamlit temporary uploads
 outputs/uploads/
+# Generated real-data case-study outputs
+outputs/case_studies/
 # Streamlit local secrets
 .streamlit/secrets.toml
+
+# Local test artifacts and runtime exports
+.codex-pytest-*/
+tmp/
+reports/
+outputs/*.log
+outputs/time_series_acceptance.json
+
+# Private derived thesis dataset (use synthetic samples for public demos)
+data/gold_tips_prepared.csv

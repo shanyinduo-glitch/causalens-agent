@@ -9,14 +9,38 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
+from matplotlib import font_manager
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
 
 from causalens.schemas import ChartRequest, ToolResult
 
+# Prefer a CJK font when available so the customer-facing chart does not show
+# missing-glyph boxes. DejaVu remains the portable fallback for CI/Linux.
+_available_fonts = {font.name for font in font_manager.fontManager.ttflist}
+for _font in ('Microsoft YaHei', 'SimHei', 'Noto Sans CJK SC'):
+    if _font in _available_fonts:
+        plt.rcParams['font.sans-serif'] = [_font, 'DejaVu Sans']
+        break
+plt.rcParams['axes.unicode_minus'] = False
+
 
 CHART_OUTPUT_DIR = Path("outputs/charts")
 MAX_DATA_PREVIEW_ROWS = 20
+
+DISPLAY_LABELS = {
+    't_diff': 'TIPS 实际收益率变化',
+    'y_ret': '黄金对数收益率',
+    'dollar_ret': '美元指数变化',
+    'sp500_ret': '标普500收益率',
+    'fed_funds_diff': '联邦基金利率变化',
+    'vix_level': 'VIX 波动率指数',
+}
+
+
+def display_label(column: str) -> str:
+    """Use a stable human label while retaining the raw field in tool output."""
+    return DISPLAY_LABELS.get(column, column)
 
 
 def _build_safe_filename(text: str) -> str:
@@ -199,7 +223,7 @@ def _create_scatter_chart(
 
     CHART_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    chart_title = request.title or f"{y_column} vs {x_column}"
+    chart_title = request.title or f"{display_label(y_column)}与{display_label(x_column)}的关系"
 
     filename_prefix = _build_safe_filename(chart_title)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -211,10 +235,25 @@ def _create_scatter_chart(
     plt.scatter(
         plot_df[x_column],
         plot_df[y_column],
+        s=14,
+        alpha=0.35,
+        edgecolors='none',
+        color='#2f75b5',
     )
 
-    plt.xlabel(x_column)
-    plt.ylabel(y_column)
+    if len(plot_df) >= 2 and plot_df[x_column].nunique() > 1:
+        slope, intercept = __import__('numpy').polyfit(plot_df[x_column], plot_df[y_column], 1)
+        xs = plot_df[x_column].sort_values()
+        plt.plot(xs, slope * xs + intercept, color='#d9534f', linewidth=2,
+                 label='线性趋势（仅描述）')
+        plt.legend(frameon=False)
+
+    plt.axhline(0, color='#b8c2cc', linewidth=0.8)
+    plt.axvline(0, color='#b8c2cc', linewidth=0.8)
+    plt.grid(True, alpha=0.18)
+
+    plt.xlabel(display_label(x_column))
+    plt.ylabel(display_label(y_column))
     plt.title(chart_title)
 
     plt.tight_layout()

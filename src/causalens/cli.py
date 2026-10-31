@@ -1,14 +1,33 @@
+import json
 from pathlib import Path
 
 import typer
 from rich.console import Console
 
-from causalens.agent.graph import run_causalens_graph
 from causalens.schemas import ToolResult
 from rich.table import Table
 from rich.text import Text
 from causalens.response_evidence import build_evidence_rows
 from causalens.reporting import save_markdown_report
+from causalens.preflight import run_preflight
+
+
+def run_causalens_graph(*args, **kwargs):
+    """延迟加载完整 Agent，使 doctor 在统计依赖缺失时仍可启动。"""
+
+    from causalens.agent.graph import run_causalens_graph as run_graph
+
+    return run_graph(*args, **kwargs)
+
+
+def run_explicit_causal_contract(*args, **kwargs):
+    """延迟加载估计器；同时保留便于测试替换的稳定入口。"""
+
+    from causalens.causal.contract_runner import (
+        run_explicit_causal_contract as run_contract,
+    )
+
+    return run_contract(*args, **kwargs)
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -21,6 +40,153 @@ console = Console()
 @app.callback()
 def main() -> None:
     """CausaLens 命令行工具。"""
+
+
+@app.command("doctor")
+def doctor() -> None:
+    """离线检查因果分析环境；不会请求模型或显示 API Key。"""
+
+    report = run_preflight(Path.cwd())
+    console.print("[bold cyan]CausaLens 运行前检查[/bold cyan]")
+    console.print(
+        "离线显式契约："
+        + ("[green]可用[/green]" if report["offline_contract_runner_ready"] else "[red]不可用[/red]")
+    )
+    console.print(
+        "自然语言 Agent："
+        + ("[green]可用[/green]" if report["natural_language_agent_ready"] else "[yellow]尚未就绪[/yellow]")
+    )
+    for check in report["checks"]:
+        marker = "[green]通过[/green]" if check["passed"] else "[red]未通过[/red]"
+        console.print(f"- {check['name']}: {marker} — {check['detail']}")
+    for warning in report["warnings"]:
+        console.print(f"[yellow]提示：{warning}[/yellow]")
+    if not report["offline_contract_runner_ready"]:
+        raise typer.Exit(code=1)
+
+
+def _contract_report_state(
+    result: dict,
+    *,
+    dataset_path: str,
+    contract_path: Path,
+) -> dict:
+    estimation = result.get("estimation")
+    succeeded = bool(estimation and estimation.get("success") is True)
+    errors = result.get("errors") or []
+    if result["workflow_status"] == "completed":
+        final_answer = "显式因果契约已完成估计；详细估计值、诊断与限制见下方结果。"
+    elif result["workflow_status"] == "awaiting_approval":
+        final_answer = "研究契约和数据检查已通过；添加 --approve 后才会执行因果估计。"
+    else:
+        final_answer = "显式因果契约未能执行。\n\n" + "\n".join(
+            f"- {item}" for item in errors
+        )
+    return {
+        "dataset_path": dataset_path,
+        "question": f"执行显式因果契约：{contract_path}",
+        "task_type": "causal_analysis",
+        "workflow_status": result["workflow_status"],
+        "plan": ["校验研究契约", "检查识别与数据质量", "检查设计准备度", "执行已批准的因果估计"],
+        "causal_question": result.get("contract"),
+        "causal_identification": result.get("identification"),
+        "causal_data_quality": result.get("data_quality"),
+        "causal_readiness": result.get("readiness"),
+        "causal_diagnostics": result.get("diagnostics"),
+        "tool_calls": ([{"tool_name": "run_causal_estimators", "arguments": {}}] if estimation else []),
+        "tool_results": (
+            [
+                {
+                    "tool_name": "run_causal_estimators",
+                    "success": succeeded,
+                    "result": estimation.get("result") if estimation else None,
+                    "error": estimation.get("error") if estimation else None,
+                }
+            ]
+            if estimation
+            else []
+        ),
+        "final_answer": final_answer,
+        "error": "; ".join(str(item) for item in errors) or None,
+    }
+
+
+@app.command("contract-run")
+def contract_run(
+    dataset_path: Path = typer.Option(..., "--dataset-path", help="要分析的 CSV 文件路径。"),
+    contract_path: Path = typer.Option(..., "--contract-path", help="显式因果研究契约 JSON 文件。"),
+    approve: bool = typer.Option(
+        False,
+        "--approve",
+        help="明确批准执行估计；省略时只做校验、诊断和方法规划。",
+    ),
+    output_json: Path | None = typer.Option(None, "--output-json", help="可选的完整 JSON 结果路径。"),
+    report_path: Path | None = typer.Option(None, "--report-path", help="可选的 Markdown 报告路径。"),
+    cache_dir: Path | None = typer.Option(None, "--cache-dir", help="可选的本地成功结果缓存目录。"),
+    chart_dir: Path | None = typer.Option(None, "--chart-dir", help="可选的诊断图输出目录。"),
+) -> None:
+    """无需大模型，校验并运行明确写出的因果研究契约。"""
+
+    if not dataset_path.is_file():
+        console.print(f"[bold red]错误：找不到数据文件：{dataset_path}[/bold red]")
+        raise typer.Exit(code=1)
+    if not contract_path.is_file():
+        console.print(f"[bold red]错误：找不到契约文件：{contract_path}[/bold red]")
+        raise typer.Exit(code=1)
+    try:
+        contract = json.loads(contract_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        console.print(f"[bold red]契约 JSON 读取失败：{exc}[/bold red]")
+        raise typer.Exit(code=1)
+    if not isinstance(contract, dict):
+        console.print("[bold red]契约 JSON 顶层必须是对象。[/bold red]")
+        raise typer.Exit(code=1)
+
+    result = run_explicit_causal_contract(
+        dataset_path=dataset_path,
+        contract=contract,
+        approved=approve,
+        result_cache_dir=cache_dir,
+        chart_output_dir=chart_dir,
+    )
+    console.print(f"[bold cyan]工作流状态：[/bold cyan] {result['workflow_status']}")
+    console.print(f"[bold cyan]当前阶段：[/bold cyan] {result['stage']}")
+    console.print("[bold cyan]模型调用次数：[/bold cyan] 0")
+    design = result.get("design_selection") or {}
+    if design:
+        console.print(
+            "[bold cyan]选定估计器：[/bold cyan] "
+            + ", ".join(design.get("selected_estimator_names") or [])
+        )
+    for warning in result.get("warnings") or []:
+        console.print(f"[yellow]提示：{warning}[/yellow]")
+    for error in result.get("errors") or []:
+        console.print(f"[bold red]阻塞/失败：{error}[/bold red]")
+    if result["workflow_status"] == "awaiting_approval":
+        console.print("[green]检查已通过。确认研究契约后，使用 --approve 执行估计。[/green]")
+    elif result["workflow_status"] == "completed":
+        console.print("[bold green]因果估计已完成。[/bold green]")
+
+    if output_json is not None:
+        output_json.parent.mkdir(parents=True, exist_ok=True)
+        output_json.write_text(
+            json.dumps(result, ensure_ascii=False, indent=2, default=str),
+            encoding="utf-8",
+        )
+        console.print(f"[green]JSON 结果已保存：[/green]{output_json}")
+    if report_path is not None:
+        save_markdown_report(
+            _contract_report_state(
+                result,
+                dataset_path=str(dataset_path),
+                contract_path=contract_path,
+            ),
+            report_path,
+            dataset_path=dataset_path,
+        )
+        console.print(f"[green]Markdown 报告已保存：[/green]{report_path}")
+    if result["workflow_status"] in {"blocked", "failed"}:
+        raise typer.Exit(code=1)
 
 @app.command()
 def ask(
@@ -93,6 +259,48 @@ def ask(
             "confounders",
             [],
         )
+        causal_question = final_state.get("causal_question") or {}
+        variable_roles = (
+            causal_question.get("variable_roles") or {}
+            if isinstance(causal_question, dict)
+            else {}
+        )
+        negative_control_outcomes = (
+            variable_roles.get("negative_control_outcomes") or []
+            if isinstance(variable_roles, dict)
+            else []
+        )
+        instruments = (
+            variable_roles.get("instruments") or []
+            if isinstance(variable_roles, dict)
+            else []
+        )
+        estimand = (
+            str(causal_question.get("estimand") or "ATE")
+            if isinstance(causal_question, dict)
+            else "ATE"
+        )
+        estimator_description = (
+            "TimeSeriesLocalProjection 估计每 1 个原始单位连续冲击的 IRF"
+            if isinstance(causal_question, dict)
+            and causal_question.get("design_type") == "time_series"
+            else "Difference-in-Differences 估计处理组 ATT"
+            if isinstance(causal_question, dict)
+            and causal_question.get("design_type") == "difference_in_differences"
+            else "TwoStageLeastSquares 估计工具变量 LATE"
+            if isinstance(causal_question, dict)
+            and causal_question.get("design_type") == "instrumental_variable"
+            else "SharpRegressionDiscontinuity 估计 cutoff 处的 LATE"
+            if isinstance(causal_question, dict)
+            and causal_question.get("design_type") == "regression_discontinuity"
+            else "SyntheticControl 估计单个处理单位的 ATT"
+            if isinstance(causal_question, dict)
+            and causal_question.get("design_type") == "synthetic_control"
+            else "CausalForestDML 估计条件平均处理效应（CATE）"
+            if estimand == "CATE"
+            else "AIPW 作为主估计器、LinearDML 作为稳健性估计器，"
+            "估计平均处理效应（ATE）"
+        )
         readiness = final_state.get(
             "causal_readiness",
             {},
@@ -136,6 +344,44 @@ def ask(
             f"- confounders：{confounders}"
         )
         console.print(
+            f"- negative-control outcomes：{negative_control_outcomes}"
+        )
+        console.print(f"- instruments：{instruments}")
+        if isinstance(causal_question, dict) and causal_question.get(
+            "design_type"
+        ) == "regression_discontinuity":
+            console.print(
+                f"- running variable：{causal_question.get('running_variable')}"
+            )
+            console.print(f"- cutoff：{causal_question.get('cutoff')}")
+            console.print(f"- bandwidth：{causal_question.get('bandwidth')}")
+        if isinstance(causal_question, dict) and causal_question.get(
+            "design_type"
+        ) == "synthetic_control":
+            console.print(f"- unit ID：{causal_question.get('unit_id_column')}")
+            console.print(f"- time：{causal_question.get('time_column')}")
+            console.print(
+                f"- intervention time：{causal_question.get('intervention_time')}"
+            )
+            console.print(
+                f"- treated unit：{causal_question.get('treated_unit') or '自动推断'}"
+            )
+        if isinstance(causal_question, dict) and causal_question.get(
+            "design_type"
+        ) == "time_series":
+            console.print(f"- time：{causal_question.get('time_column')}")
+            console.print(
+                f"- maximum horizon：{causal_question.get('max_horizon')}"
+            )
+            console.print(
+                "- response："
+                + (
+                    "cumulative"
+                    if causal_question.get("cumulative_outcome", True)
+                    else "point-in-time"
+                )
+            )
+        console.print(
             "- 完整样本数："
             f"{sample_summary.get('complete_cases')}"
         )
@@ -159,9 +405,7 @@ def ask(
 
         console.print()
         console.print(
-            "下一步将使用 LinearDML 估计 "
-            "treatment 从 0 到 1 的平均处理效应"
-            "（ATE）。"
+            f"下一步将使用 {estimator_description}。"
         )
         console.print(
             "准备度通过只代表满足最低技术条件，"
@@ -169,7 +413,7 @@ def ask(
         )
 
         approved = typer.confirm(
-            "是否继续执行 LinearDML 因果效应估计？",
+            f"是否继续执行 {estimator_description}？",
             default=False,
         )
 
@@ -204,7 +448,7 @@ def ask(
 
             cancellation_message = (
                 "用户未确认继续执行，"
-                "因此 LinearDML 未运行，"
+                "因此因果估计器未运行，"
                 "也没有产生 ATE 估计。"
             )
 

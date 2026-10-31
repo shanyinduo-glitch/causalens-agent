@@ -1,0 +1,44 @@
+{
+  "treatment": "treatment",
+  "outcome": "outcome",
+  "estimand": "ATE",
+  "design_type": "cross_sectional",
+  "treatment_contrast": {
+    "control": 0,
+    "treated": 1
+  },
+  "target_population": "数据文件所覆盖的目标总体",
+  "unit_of_analysis": "每一行代表的个体",
+  "outcome_horizon": "处理后约定的观察期",
+  "confounders": [
+    "age",
+    "baseline_score"
+  ],
+  "effect_modifiers": [],
+  "mediators": [],
+  "colliders": [],
+  "instruments": [],
+  "negative_control_outcomes": [],
+  "dag_edges": [
+    {
+      "source": "age",
+      "target": "treatment"
+    },
+    {
+      "source": "age",
+      "target": "outcome"
+    },
+    {
+      "source": "baseline_score",
+      "target": "treatment"
+    },
+    {
+      "source": "baseline_score",
+      "target": "outcome"
+    },
+    {
+      "source": "treatment",
+      "target": "outcome"
+    }
+  ]
+}

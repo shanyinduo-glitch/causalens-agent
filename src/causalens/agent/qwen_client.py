@@ -1,48 +1,109 @@
-import os
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any
 
 from openai import OpenAI
 
-from causalens.agent.tool_registry import TOOLS
+from causalens.config import (
+    DEFAULT_BASE_URL,
+    DEFAULT_MODEL_NAME,
+    Settings,
+    get_free_model_candidates,
+)
 
 
-DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-#DEFAULT_MODEL_NAME = "qwen3.7-flash-2026-07-15"
-DEFAULT_MODEL_NAME = "qwen3.7-flash"
+_remaining_calls: ContextVar[int | None] = ContextVar(
+    "causalens_remaining_llm_calls",
+    default=None,
+)
 
-def get_qwen_client() -> OpenAI:
+
+class FreeModelQuotaExhaustedError(RuntimeError):
+    """所有配置的免费额度模型均已耗尽。"""
+
+
+class LLMCallBudgetExceededError(RuntimeError):
+    """单次工作流允许的模型调用次数已经耗尽。"""
+
+
+@contextmanager
+def llm_call_budget(limit: int):
+    """为一次工作流设置独立的 LLM 调用次数上限。"""
+
+    if limit < 1:
+        raise ValueError("LLM 调用预算必须至少为 1。")
+    token = _remaining_calls.set(limit)
+    try:
+        yield
+    finally:
+        _remaining_calls.reset(token)
+
+
+def _consume_call_budget() -> None:
+    remaining = _remaining_calls.get()
+    if remaining is None:
+        return
+    if remaining <= 0:
+        raise LLMCallBudgetExceededError(
+            "本次分析已达到模型调用次数上限，"
+            "为避免继续消耗免费额度，工作流已停止。"
+        )
+    _remaining_calls.set(remaining - 1)
+
+
+def _is_free_quota_exhausted(exc: Exception) -> bool:
+    status_code = getattr(exc, "status_code", None)
+    body = getattr(exc, "body", None)
+    searchable = f"{exc} {body}".lower()
+    quota_markers = (
+        "allocationquota.freetieronly",
+        "free tier",
+        "free quota",
+        "免费额度",
+    )
+    return status_code == 403 and any(
+        marker in searchable for marker in quota_markers
+    )
+
+
+def get_qwen_client(settings: Settings | None = None) -> OpenAI:
     """创建并返回千问 OpenAI 兼容客户端。"""
 
-    api_key = os.getenv("DASHSCOPE_API_KEY")
-    base_url = os.getenv("DASHSCOPE_BASE_URL", DEFAULT_BASE_URL)
-
-    if not api_key:
-        raise RuntimeError(
-            "未找到 DASHSCOPE_API_KEY 环境变量，请检查系统环境变量配置。"
-        )
+    resolved = settings or Settings.from_env()
 
     return OpenAI(
-        api_key=api_key,
-        base_url=base_url,
+        api_key=resolved.dashscope_api_key,
+        base_url=resolved.dashscope_base_url,
+        timeout=resolved.request_timeout_seconds,
+        # SDK 隐式重试可能重复消耗 Token。重试由上层显式决定。
+        max_retries=0,
     )
 
 
 def get_model_name() -> str:
-    """读取当前要使用的模型名称。"""
+    """返回免费额度候选列表中的首选模型。"""
 
-    return os.getenv("MODEL_NAME", DEFAULT_MODEL_NAME)
+    return get_free_model_candidates()[0]
 
 
 def create_chat_completion(
     messages: list[dict[str, Any]],
     *,
     tools: list[dict[str, Any]] | None = None,
-    tool_choice: str | None = None,
+    tool_choice: str | dict[str, Any] | None = None,
+    response_format: dict[str, Any] | None = None,
+    planning_mode: bool = False,
 ):
-    """向千问发送一次对话请求。"""
+    """
+    调用已确认具有免费额度保护的模型。
+
+    只有服务明确返回免费额度耗尽错误时才尝试下一个候选模型；
+    网络错误、参数错误和服务端错误都不会触发轮换。
+    """
+
+    settings = Settings.from_env()
 
     request_kwargs: dict[str, Any] = {
-        "model": get_model_name(),
         "messages": messages,
     }
 
@@ -52,14 +113,40 @@ def create_chat_completion(
     if tool_choice is not None:
         request_kwargs["tool_choice"] = tool_choice
 
-    with get_qwen_client() as client:
-        return client.chat.completions.create(
-            **request_kwargs,
-        )
+    if response_format is not None:
+        request_kwargs["response_format"] = response_format
+    if planning_mode:
+        request_kwargs['max_tokens'] = 2048
+
+    exhausted_models: list[str] = []
+    with get_qwen_client(settings) as client:
+        for model_name in settings.free_model_candidates:
+            model_kwargs = dict(request_kwargs)
+            # Only pass the provider-specific switch to the model verified in live probes.
+            if planning_mode and model_name == 'qwen3.8-flash':
+                model_kwargs['extra_body'] = {'enable_thinking': False}
+            _consume_call_budget()
+            try:
+                return client.chat.completions.create(
+                    model=model_name,
+                    **model_kwargs,
+                )
+            except Exception as exc:
+                if not _is_free_quota_exhausted(exc):
+                    raise
+                exhausted_models.append(model_name)
+
+    raise FreeModelQuotaExhaustedError(
+        "已配置模型的免费额度均已耗尽，未切换到任何付费模型："
+        + ", ".join(exhausted_models)
+    )
 
 
 def request_tool_call(user_question: str):
     """保留 Day 4 的演示函数：请求模型选择工具。"""
+
+    # 延迟导入，避免普通模型配置读取加载完整数据工具依赖。
+    from causalens.agent.tool_registry import TOOLS
 
     messages = [
         {

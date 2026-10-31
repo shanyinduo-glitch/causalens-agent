@@ -1,0 +1,33 @@
+{
+  "treatment": "t_diff",
+  "outcome": "y_ret",
+  "estimand": "IRF",
+  "design_type": "time_series",
+  "time_column": "date",
+  "target_population": "2006年1月至2025年6月样本覆盖的交易日",
+  "unit_of_analysis": "一个交易日",
+  "outcome_horizon": "冲击当期至未来5个交易日",
+  "confounders": [
+    "dollar_ret",
+    "sp500_ret",
+    "fed_funds_diff",
+    "comex_gold_ret",
+    "global_holdings_tonnes_ret",
+    "vix_level",
+    "cpi_yoy_level",
+    "infl_exp5y_level",
+    "gprh_level"
+  ],
+  "effect_modifiers": [],
+  "mediators": [],
+  "colliders": [],
+  "instruments": [],
+  "negative_control_outcomes": [],
+  "max_horizon": 5,
+  "treatment_lags": 1,
+  "outcome_lags": 1,
+  "control_lag": 1,
+  "cumulative_outcome": true,
+  "hac_lags": null,
+  "dag_edges": []
+}

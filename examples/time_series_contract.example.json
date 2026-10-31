@@ -1,0 +1,28 @@
+{
+  "treatment": "t_diff",
+  "outcome": "y_ret",
+  "estimand": "IRF",
+  "design_type": "time_series",
+  "time_column": "date",
+  "target_population": "研究样本覆盖的交易日",
+  "unit_of_analysis": "交易日",
+  "outcome_horizon": "冲击当期至未来 5 个交易日",
+  "confounders": [
+    "dollar_ret",
+    "sp500_ret",
+    "fed_funds_diff",
+    "vix_level"
+  ],
+  "effect_modifiers": [],
+  "mediators": [],
+  "colliders": [],
+  "instruments": [],
+  "negative_control_outcomes": [],
+  "max_horizon": 5,
+  "treatment_lags": 1,
+  "outcome_lags": 1,
+  "control_lag": 1,
+  "cumulative_outcome": true,
+  "hac_lags": null,
+  "dag_edges": []
+}

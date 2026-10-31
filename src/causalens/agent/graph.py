@@ -16,6 +16,9 @@ from causalens.agent.nodes import (
     causal_execution_node,
 )
 from causalens.agent.state import AgentState, create_initial_state
+from causalens.agent.qwen_client import llm_call_budget
+from causalens.config import get_max_llm_calls_per_run
+from causalens.causal.runtime import WorkflowCheckpointStore
 
 
 def route_after_intent(
@@ -355,6 +358,9 @@ def run_causalens_graph(
     question: str,
     max_steps: int = 5,
     approved: bool | None = None,
+    checkpoint_dir: str | None = None,
+    run_id: str | None = None,
+    research_context: str = '',
 ) -> AgentState:
     """
     创建初始状态并运行 CausaLens 工作流。
@@ -368,7 +374,30 @@ def run_causalens_graph(
         max_steps=max_steps,
         approved=approved,
     )
+    initial_state['research_context'] = research_context
+    checkpoint_store = (
+        WorkflowCheckpointStore(checkpoint_dir)
+        if checkpoint_dir and run_id
+        else None
+    )
+    if checkpoint_store is not None:
+        checkpoint_store.save(run_id, dict(initial_state))
 
-    final_state: dict[str, Any] = graph.invoke(initial_state)
+    # 所有真实模型调用共享本轮预算；确定性工具不计入预算。
+    with llm_call_budget(get_max_llm_calls_per_run()):
+        final_state: dict[str, Any] = graph.invoke(initial_state)
+
+    if checkpoint_store is not None:
+        checkpoint_store.save(run_id, final_state)
 
     return final_state
+
+
+def load_causalens_checkpoint(
+    checkpoint_dir: str,
+    run_id: str,
+) -> AgentState | None:
+    """读取本地工作流快照；调用方可检查后决定是否重新运行。"""
+
+    state = WorkflowCheckpointStore(checkpoint_dir).load(run_id)
+    return state  # type: ignore[return-value]
